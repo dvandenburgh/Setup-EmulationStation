@@ -564,6 +564,13 @@ $StandaloneEmulators = @(
         Repo      = "mamedev/mame"
         Pattern   = "mame.*64bit.*\.exe$|mame.*win.*\.zip$"
         Notes     = "Multi-Arcade Machine Emulator"
+    },
+    @{
+        Name      = "Ryujinx (Ryubing)"
+        Folder    = "Ryujinx"
+        Repo      = "Kenji-NX/Releases"
+        Pattern   = "ryujinx.*win.*x64.*\.zip$|.*[Ww]indows.*[Aa]rtifact.*\.zip$"
+        Notes     = "Nintendo Switch emulator -- requires prod.keys and firmware from your Switch"
     }
 )
 
@@ -706,6 +713,14 @@ $BIOSGuide = @"
 -----------------------------------------------
   mcpx_1.0.bin       -- MCPX Boot ROM
   Complex_4627.bin   -- Flash BIOS image
+
+-----------------------------------------------
+  NINTENDO SWITCH -- Ryujinx (Ryubing)
+-----------------------------------------------
+  prod.keys          -- Production keys (dump from your own Switch)
+  title.keys         -- Title keys (optional, not required for most games)
+  Switch firmware     -- Install via Ryujinx > Tools > Install Firmware
+  (Keys go in Ryujinx user folder > system\, firmware installed via GUI)
 
 -----------------------------------------------
   NOTES
