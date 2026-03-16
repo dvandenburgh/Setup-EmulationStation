@@ -512,7 +512,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "Xenia Canary"
         Folder    = "Xenia"
-        Repo      = "xenia-canary/xenia-canary"
+        Repo      = "xenia-canary/xenia-canary-releases"
         Pattern   = "xenia_canary.*\.zip$"
         Notes     = "Xbox 360 emulator (experimental)"
     },

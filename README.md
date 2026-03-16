@@ -60,7 +60,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ```powershell
 # Install to a different drive
-.\Setup-EmulationStation.ps1 -BasePath "D:\EmulationStation"
+.\Setup-EmulationStation.ps1 -BasePath "D:\Emulation"
 
 # Scaffold the folder structure first, download later
 .\Setup-EmulationStation.ps1 -SkipDownloads
@@ -129,7 +129,7 @@ All 16 are downloaded automatically from their official GitHub/GitLab releases:
 | Cemu | Wii U | cemu-project/Cemu |
 | Ryujinx (Ryubing) | Nintendo Switch | Kenji-NX/Releases |
 | Xemu | Xbox | xemu-project/xemu |
-| Xenia Canary | Xbox 360 | xenia-canary/xenia-canary |
+| Xenia Canary | Xbox 360 | xenia-canary/xenia-canary-releases |
 | melonDS | Nintendo DS | melonDS-emu/melonDS |
 | mGBA | GBA, GB, GBC | mgba-emu/mgba |
 | Flycast | Dreamcast, NAOMI, Atomiswave | flyinghead/flycast |
