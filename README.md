@@ -60,7 +60,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ```powershell
 # Install to a different drive
-.\Setup-EmulationStation.ps1 -BasePath "D:\Emulation"
+.\Setup-EmulationStation.ps1 -BasePath "D:\EmulationStation"
 
 # Scaffold the folder structure first, download later
 .\Setup-EmulationStation.ps1 -SkipDownloads
