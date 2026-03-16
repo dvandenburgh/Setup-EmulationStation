@@ -121,7 +121,7 @@ All 16 are downloaded automatically from their official GitHub/GitLab releases:
 | Emulator | System(s) | Source |
 |----------|-----------|--------|
 | RetroArch | Most systems via ~80 libretro cores | libretro buildbot |
-| Dolphin | GameCube, Wii | dolphin-emu/dolphin |
+| Dolphin | GameCube, Wii | dl.dolphin-emu.org |
 | PCSX2 | PlayStation 2 | PCSX2/pcsx2 |
 | RPCS3 | PlayStation 3 | RPCS3/rpcs3-binaries-win |
 | DuckStation | PlayStation 1 | stenzek/duckstation |
@@ -134,9 +134,9 @@ All 16 are downloaded automatically from their official GitHub/GitLab releases:
 | mGBA | GBA, GB, GBC | mgba-emu/mgba |
 | Flycast | Dreamcast, NAOMI, Atomiswave | flyinghead/flycast |
 | Vita3K | PS Vita | Vita3K/Vita3K |
-| MAME | Arcade | mamedev/mame |
+| MAME | Arcade | mamedev.org (GitHub releases) |
 | DOSBox Staging | MS-DOS | dosbox-staging/dosbox-staging |
-| ScummVM | Adventure games | scummvm/scummvm |
+| ScummVM | Adventure games | scummvm.org |
 
 ## Supported Systems
 

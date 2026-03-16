@@ -463,8 +463,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "Dolphin"
         Folder    = "Dolphin"
-        Repo      = "dolphin-emu/dolphin"
-        Pattern   = "Dolphin.*x64.*\.7z$"
+        DirectUrl = "https://dl.dolphin-emu.org/releases/2412/dolphin-2412-x64.7z"
         Notes     = "GameCube and Wii emulator"
     },
     @{
@@ -540,8 +539,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "ScummVM"
         Folder    = "ScummVM"
-        Repo      = "scummvm/scummvm"
-        Pattern   = "scummvm.*win32.*x86_64.*\.zip$|scummvm.*windows.*\.zip$"
+        DirectUrl = "https://downloads.scummvm.org/frs/scummvm/2.9.1/scummvm-2.9.1-win32-x86_64.zip"
         Notes     = "Adventure game engine"
     },
     @{
@@ -561,9 +559,8 @@ $StandaloneEmulators = @(
     @{
         Name      = "MAME"
         Folder    = "MAME"
-        Repo      = "mamedev/mame"
-        Pattern   = "mame.*64bit.*\.exe$|mame.*win.*\.zip$"
-        Notes     = "Multi-Arcade Machine Emulator"
+        DirectUrl = "https://github.com/mamedev/mame/releases/download/mame0286/mame0286b_64bit.exe"
+        Notes     = "Multi-Arcade Machine Emulator (self-extracting exe)"
     },
     @{
         Name      = "Ryujinx (Ryubing)"
@@ -973,21 +970,31 @@ if (-not $RetroArchOnly) {
         $emuInstallDir = "$($Paths.Emulators)\$($emu.Folder)"
         Ensure-Dir $emuInstallDir
 
-        $release = Get-GitHubLatestRelease -Repo $emu.Repo
-        if (-not $release) {
-            Write-Err "Could not find release for $($emu.Name) ($($emu.Repo))"
-            continue
+        $assetUrl = $null
+
+        # Method 1: Direct URL (for emulators that don't use GitHub releases)
+        if ($emu.ContainsKey('DirectUrl') -and $emu.DirectUrl) {
+            $assetUrl = $emu.DirectUrl
+        }
+        # Method 2: GitHub releases API
+        elseif ($emu.ContainsKey('Repo') -and $emu.Repo) {
+            $release = Get-GitHubLatestRelease -Repo $emu.Repo
+            if (-not $release) {
+                Write-Err "Could not find release for $($emu.Name) ($($emu.Repo))"
+                continue
+            }
+
+            $assetUrl = Get-GitHubAssetUrl -Release $release -Pattern $emu.Pattern
+            if (-not $assetUrl) {
+                $assetUrl = $release.assets |
+                    Where-Object { $_.name -match 'win' -and $_.name -match '(64|x64|x86_64)' } |
+                    Select-Object -First 1 |
+                    ForEach-Object { $_.browser_download_url }
+            }
         }
 
-        $assetUrl = Get-GitHubAssetUrl -Release $release -Pattern $emu.Pattern
         if (-not $assetUrl) {
-            $assetUrl = $release.assets |
-                Where-Object { $_.name -match 'win' -and $_.name -match '(64|x64|x86_64)' } |
-                Select-Object -First 1 |
-                ForEach-Object { $_.browser_download_url }
-        }
-        if (-not $assetUrl) {
-            Write-Err "No matching Windows x64 asset found for $($emu.Name)"
+            Write-Err "No download source found for $($emu.Name)"
             continue
         }
 
