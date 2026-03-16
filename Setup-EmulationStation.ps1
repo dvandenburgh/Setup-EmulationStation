@@ -874,23 +874,57 @@ if ($SkipDownloads) {
 }
 
 # -- 4. Download ES-DE ---------------------------------------------------------
+# ES-DE is hosted on GitLab (not GitHub). We try the GitLab releases API first,
+# then fall back to a known-good direct download URL for the Windows portable build.
 Write-Step "Downloading EmulationStation Desktop Edition (ES-DE)..."
 Ensure-Dir $Paths.ESDE
 
-$esdeRelease = Get-GitHubLatestRelease -Repo "ES-DE/ES-DE"
-if ($esdeRelease) {
-    $esdeUrl = Get-GitHubAssetUrl -Release $esdeRelease -Pattern "ES-DE.*Windows.*x64.*\.zip$|ES-DE.*Win64.*\.zip$"
-    if (-not $esdeUrl) {
-        # Try portable
-        $esdeUrl = Get-GitHubAssetUrl -Release $esdeRelease -Pattern "ES-DE.*portable.*\.zip$|ES-DE.*\.zip$"
-    }
-    $esdeDl = "$($Paths.Downloads)\esde.zip"
-    if (Download-File -Url $esdeUrl -Destination $esdeDl -Description "ES-DE") {
-        Extract-Archive -Archive $esdeDl -Destination $Paths.ESDE -Description "ES-DE"
+$esdeUrl = $null
+$esdeDl = "$($Paths.Downloads)\esde.zip"
+
+# Method 1: GitLab releases API
+try {
+    Write-Info "Querying GitLab for latest ES-DE release..."
+    $gitlabApi = "https://gitlab.com/api/v4/projects/es-de%2Femulationstation-de/releases"
+    $esdeReleases = Invoke-RestMethod -Uri $gitlabApi -Headers @{ 'User-Agent' = 'EmulationStation-Setup/1.0' }
+    $latestRelease = $esdeReleases | Select-Object -First 1
+    if ($latestRelease) {
+        Write-Info "Found ES-DE $($latestRelease.tag_name)"
+        # Look for the Windows portable link in release assets
+        $windowsLink = $latestRelease.assets.links |
+            Where-Object { $_.name -match 'portable' -or $_.name -match '[Ww]indows.*portable' } |
+            Select-Object -First 1
+        if ($windowsLink) {
+            $esdeUrl = $windowsLink.direct_asset_url
+            if (-not $esdeUrl) { $esdeUrl = $windowsLink.url }
+        }
+        # If no portable-specific link, try any Windows link
+        if (-not $esdeUrl) {
+            $windowsLink = $latestRelease.assets.links |
+                Where-Object { $_.name -match '[Ww]indows' } |
+                Select-Object -First 1
+            if ($windowsLink) {
+                $esdeUrl = $windowsLink.direct_asset_url
+                if (-not $esdeUrl) { $esdeUrl = $windowsLink.url }
+            }
+        }
     }
 }
+catch {
+    Write-Info "GitLab API query failed, trying direct download..."
+}
+
+# Method 2: Known direct download URL (ES-DE v3.4.0 Windows portable)
+if (-not $esdeUrl) {
+    Write-Info "Using known download URL for ES-DE v3.4.0..."
+    $esdeUrl = "https://gitlab.com/es-de/emulationstation-de/-/package_files/243196975/download"
+}
+
+if (Download-File -Url $esdeUrl -Destination $esdeDl -Description "ES-DE") {
+    Extract-Archive -Archive $esdeDl -Destination $Paths.ESDE -Description "ES-DE"
+}
 else {
-    Write-Err "Could not find ES-DE release. Download manually from https://es-de.org"
+    Write-Err "Could not download ES-DE. Get it manually from https://es-de.org"
 }
 
 # -- 5. Download RetroArch -----------------------------------------------------
