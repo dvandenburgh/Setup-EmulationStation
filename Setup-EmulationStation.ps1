@@ -214,7 +214,7 @@ function Get-7ZipPath {
 # this moves everything up so Base\ES-DE.exe exists.
 function Flatten-SingleSubfolder {
     param([string]$Dir)
-    $children = Get-ChildItem -Path $Dir -Force
+    $children = @(Get-ChildItem -Path $Dir -Force)
     if ($children.Count -eq 1 -and $children[0].PSIsContainer) {
         $subfolder = $children[0].FullName
         Write-Info "Flattening nested folder: $($children[0].Name)"
@@ -225,7 +225,7 @@ function Flatten-SingleSubfolder {
             }
         }
         # Remove the now-empty subfolder
-        if ((Get-ChildItem -Path $subfolder -Force).Count -eq 0) {
+        if (@(Get-ChildItem -Path $subfolder -Force).Count -eq 0) {
             Remove-Item -Path $subfolder -Force
         }
     }
