@@ -138,7 +138,17 @@ function Download-File {
     }
     try {
         Write-Info "Downloading $Description..."
-        Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing
+        # Try Invoke-WebRequest first
+        try {
+            Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -TimeoutSec 300 -MaximumRedirection 10
+        }
+        catch {
+            # Fallback to .NET WebClient for large files (more reliable with redirects)
+            Write-Info "Retrying with WebClient..."
+            $wc = New-Object System.Net.WebClient
+            $wc.DownloadFile($Url, $Destination)
+            $wc.Dispose()
+        }
         Write-OK "Downloaded $Description"
         return $true
     }
@@ -559,8 +569,9 @@ $StandaloneEmulators = @(
     @{
         Name      = "MAME"
         Folder    = "MAME"
-        DirectUrl = "https://github.com/mamedev/mame/releases/download/mame0286/mame0286b_64bit.exe"
-        Notes     = "Multi-Arcade Machine Emulator (self-extracting exe)"
+        Repo      = "mamedev/mame"
+        Pattern   = "mame.*b_x64\.exe$"
+        Notes     = "Multi-Arcade Machine Emulator (self-extracting archive)"
     },
     @{
         Name      = "Ryujinx (Ryubing)"
