@@ -6,18 +6,25 @@
 
 .DESCRIPTION
     This script will:
-      1. Create a complete directory structure (emulators, ROMs, BIOS, saves, config)
-      2. Download and extract ES-DE (EmulationStation Desktop Edition)
-      3. Download and extract RetroArch (portable) with all relevant libretro cores
-      4. Download standalone emulators for systems that need them
-      5. Generate a BIOS guide with every required/optional BIOS file listed
-      6. Generate an ES-DE systems configuration
+      1. Download and extract ES-DE portable for Windows
+      2. Create ROMs/ and Emulators/ directories where ES-DE expects them
+      3. Download RetroArch portable with ~80 libretro cores
+      4. Download 15 standalone emulators into Emulators/
+      5. Generate a BIOS reference guide with MD5 checksums
+      6. Generate a quick-start configuration guide
 
-    Run as Administrator for best results (some downloads may need it).
+    The resulting directory layout matches ES-DE portable conventions:
+      BasePath/ES-DE.exe
+      BasePath/ROMs/<system>/
+      BasePath/Emulators/RetroArch/
+      BasePath/Emulators/<standalone>/
+
+    Run as Administrator for best results (7-Zip install, NTFS junctions).
     Requires an active internet connection.
 
 .PARAMETER BasePath
     Root directory for the entire setup. Default: C:\EmulationStation
+    This directory becomes the ES-DE portable installation root.
 
 .PARAMETER SkipDownloads
     If set, only creates the directory structure and config files without downloading.
@@ -27,7 +34,7 @@
 
 .NOTES
     Author  : Claude (Anthropic) + David
-    Version : 1.0.1
+    Version : 1.1.0
     Date    : 2026-03-16
     License : MIT -- use at your own risk
 #>
@@ -44,7 +51,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'   # speeds up Invoke-WebRequest dramatically
 
-# -- Colour helpers ------------------------------------------------------------
+# -- Output helpers ------------------------------------------------------------
 function Write-Step  { param([string]$Msg) Write-Host "`n>> $Msg" -ForegroundColor Cyan }
 function Write-OK    { param([string]$Msg) Write-Host "  [OK] $Msg" -ForegroundColor Green }
 function Write-Skip  { param([string]$Msg) Write-Host "  [SKIP] $Msg" -ForegroundColor Yellow }
@@ -52,19 +59,22 @@ function Write-Err   { param([string]$Msg) Write-Host "  [FAIL] $Msg" -Foregroun
 function Write-Info  { param([string]$Msg) Write-Host "  [INFO] $Msg" -ForegroundColor Gray }
 
 # -- Global paths --------------------------------------------------------------
+# ES-DE portable expects:
+#   <root>/ES-DE.exe           (or wherever the exe lands)
+#   <root>/ROMs/<system>/      (default ROM path for portable mode)
+#   <root>/Emulators/          (searched by es_find_rules.xml)
+#
+# We make BasePath the ES-DE portable root. Everything lives here.
+
 $Paths = @{
     Base       = $BasePath
-    Emulators  = "$BasePath\emulators"
-    ROMs       = "$BasePath\roms"
-    BIOS       = "$BasePath\bios"
-    Saves      = "$BasePath\saves"
-    States     = "$BasePath\states"
-    Config     = "$BasePath\config"
+    ROMs       = "$BasePath\ROMs"
+    Emulators  = "$BasePath\Emulators"
+    BIOS       = "$BasePath\Emulators\RetroArch\system"
     Downloads  = "$BasePath\.downloads"
-    ESDE       = "$BasePath\emulators\ES-DE"
-    RetroArch  = "$BasePath\emulators\RetroArch"
-    RACores    = "$BasePath\emulators\RetroArch\cores"
-    RASystem   = "$BasePath\emulators\RetroArch\system"
+    RetroArch  = "$BasePath\Emulators\RetroArch"
+    RACores    = "$BasePath\Emulators\RetroArch\cores"
+    RASystem   = "$BasePath\Emulators\RetroArch\system"
 }
 
 # -- TLS 1.2 for GitHub -------------------------------------------------------
@@ -82,7 +92,6 @@ function Ensure-Dir {
 }
 
 function Get-GitHubLatestRelease {
-    <# Returns the latest release object from a GitHub repo #>
     param([string]$Repo)
     try {
         $uri = "https://api.github.com/repos/$Repo/releases/latest"
@@ -90,7 +99,6 @@ function Get-GitHubLatestRelease {
         return $release
     }
     catch {
-        # Some repos use pre-releases only
         try {
             $uri = "https://api.github.com/repos/$Repo/releases"
             $releases = Invoke-RestMethod -Uri $uri -Headers @{ 'User-Agent' = 'EmulationStation-Setup/1.0' }
@@ -104,7 +112,6 @@ function Get-GitHubLatestRelease {
 }
 
 function Get-GitHubAssetUrl {
-    <# Finds a download URL matching a pattern from a GitHub release #>
     param(
         [object]$Release,
         [string]$Pattern
@@ -157,7 +164,6 @@ function Extract-Archive {
             Expand-Archive -Path $Archive -DestinationPath $Destination -Force
         }
         elseif ($Archive -match '\.(7z|tar\.gz|tar\.xz)$') {
-            # Requires 7-Zip -- we will install it if missing
             $7z = Get-7ZipPath
             if (-not $7z) {
                 Write-Err "7-Zip required but not found for $Description"
@@ -186,14 +192,12 @@ function Get-7ZipPath {
     foreach ($c in $candidates) {
         if (Test-Path $c) { return $c }
     }
-    # Try to download portable 7-Zip
     try {
         $7zDir = "$($Paths.Emulators)\7zip"
         Ensure-Dir $7zDir
         $7zInstallerUrl = "https://github.com/ip7z/7zip/releases/download/24.09/7z2409-x64.exe"
         $7zInstaller = "$($Paths.Downloads)\7z-setup.exe"
         Invoke-WebRequest -Uri $7zInstallerUrl -OutFile $7zInstaller -UseBasicParsing
-        # Silent install
         Start-Process -FilePath $7zInstaller -ArgumentList "/S" -Wait
         if (Test-Path "${env:ProgramFiles}\7-Zip\7z.exe") {
             return "${env:ProgramFiles}\7-Zip\7z.exe"
@@ -205,11 +209,31 @@ function Get-7ZipPath {
     return $null
 }
 
+# Moves contents of a single nested subfolder up to the parent.
+# e.g. if extracting creates Base\EmulationStation-DE\ES-DE.exe,
+# this moves everything up so Base\ES-DE.exe exists.
+function Flatten-SingleSubfolder {
+    param([string]$Dir)
+    $children = Get-ChildItem -Path $Dir -Force
+    if ($children.Count -eq 1 -and $children[0].PSIsContainer) {
+        $subfolder = $children[0].FullName
+        Write-Info "Flattening nested folder: $($children[0].Name)"
+        Get-ChildItem -Path $subfolder -Force | ForEach-Object {
+            $destPath = Join-Path $Dir $_.Name
+            if (-not (Test-Path $destPath)) {
+                Move-Item -Path $_.FullName -Destination $Dir -Force
+            }
+        }
+        # Remove the now-empty subfolder
+        if ((Get-ChildItem -Path $subfolder -Force).Count -eq 0) {
+            Remove-Item -Path $subfolder -Force
+        }
+    }
+}
+
 # ==============================================================================
 #  SYSTEM / ROM DIRECTORY DEFINITIONS
 # ==============================================================================
-#  Every system Batocera supports on x86_64 with its ROM folder name,
-#  friendly display name, and supported file extensions.
 
 $Systems = [ordered]@{
     # -- Atari ------------------------------------------------------------------
@@ -345,11 +369,8 @@ $Systems = [ordered]@{
 # ==============================================================================
 #  RETROARCH CORES -- mapped to systems
 # ==============================================================================
-#  Core DLL name -> array of system folder(s) it serves
-#  These will be downloaded from the Buildbot.
 
 $RetroArchCores = [ordered]@{
-    # -- Nintendo ---------------------------------------------------------------
     "fceumm"                 = @("nes","fds")
     "mesen"                  = @("nes","fds")
     "nestopia"               = @("nes","fds")
@@ -365,12 +386,10 @@ $RetroArchCores = [ordered]@{
     "dolphin"                = @("gamecube","wii")
     "pokemini"               = @("pokemini")
     "mednafen_vb"            = @("virtualboy")
-    # -- Sony -------------------------------------------------------------------
     "swanstation"            = @("psx")
     "pcsx_rearmed"           = @("psx")
     "mednafen_psx_hw"        = @("psx")
     "ppsspp"                 = @("psp")
-    # -- Sega -------------------------------------------------------------------
     "genesis_plus_gx"        = @("mastersystem","megadrive","segacd","gamegear","sg1000")
     "genesis_plus_gx_wide"   = @("mastersystem","megadrive","segacd","gamegear","sg1000")
     "picodrive"              = @("mastersystem","megadrive","sega32x","segacd")
@@ -378,14 +397,11 @@ $RetroArchCores = [ordered]@{
     "kronos"                 = @("saturn")
     "mednafen_saturn"        = @("saturn")
     "yabasanshiro"           = @("saturn")
-    # -- NEC --------------------------------------------------------------------
     "mednafen_pce"           = @("pcengine","pcenginecd","supergrafx")
     "mednafen_pce_fast"      = @("pcengine","pcenginecd","supergrafx")
     "mednafen_pcfx"          = @("pcfx")
-    # -- SNK --------------------------------------------------------------------
     "fbneo"                  = @("neogeo","neogeocd","fbneo","cps","cps2","cps3")
     "mednafen_ngp"           = @("ngp","ngpc")
-    # -- Atari ------------------------------------------------------------------
     "stella"                 = @("atari2600")
     "stella2014"             = @("atari2600")
     "atari800"               = @("atari5200","atarixe")
@@ -394,12 +410,10 @@ $RetroArchCores = [ordered]@{
     "handy"                  = @("atarilynx")
     "mednafen_lynx"          = @("atarilynx")
     "hatari"                 = @("atarist")
-    # -- Arcade -----------------------------------------------------------------
     "mame"                   = @("mame")
     "mame2003_plus"          = @("mame")
     "mame2010"               = @("mame")
     "daphne"                 = @("daphne")
-    # -- Computers --------------------------------------------------------------
     "dosbox_pure"            = @("dos")
     "dosbox_svn"             = @("dos")
     "scummvm"                = @("scummvm")
@@ -425,7 +439,6 @@ $RetroArchCores = [ordered]@{
     "nxengine"               = @("cavestory")
     "lutro"                  = @("lutro")
     "easyrpg"                = @("easyrpg")
-    # -- Misc Consoles ----------------------------------------------------------
     "opera"                  = @("3do")
     "vecx"                   = @("vectrex")
     "freeintv"               = @("intellivision")
@@ -434,40 +447,38 @@ $RetroArchCores = [ordered]@{
     "arduous"                = @("arduboy")
     "bk"                     = @("coco")
     "mesen-s"                = @("snes","gb","gbc")
-    # -- Additional Japanese/obscure --------------------------------------------
     "nekop2"                 = @("pc98")
-    "cap32"                  = @()  # Amstrad CPC (not in our systems but core exists)
-    "crocods"                = @()  # Amstrad CPC
+    "cap32"                  = @()
+    "crocods"                = @()
     "fmtowns"               = @("fmtowns")
 }
 
 # ==============================================================================
-#  STANDALONE EMULATORS -- downloaded from GitHub where possible
+#  STANDALONE EMULATORS
 # ==============================================================================
+# Folder names here must match what es_find_rules.xml expects inside Emulators/.
+# ES-DE searches for e.g. Emulators/PCSX2/pcsx2*.exe, Emulators/Dolphin/Dolphin.exe, etc.
 
 $StandaloneEmulators = @(
     @{
         Name      = "Dolphin"
-        Folder    = "dolphin"
+        Folder    = "Dolphin"
         Repo      = "dolphin-emu/dolphin"
         Pattern   = "Dolphin.*x64.*\.7z$"
-        Systems   = @("gamecube","wii")
         Notes     = "GameCube and Wii emulator"
     },
     @{
         Name      = "PCSX2"
-        Folder    = "pcsx2"
+        Folder    = "PCSX2"
         Repo      = "PCSX2/pcsx2"
         Pattern   = "pcsx2.*windows.*x64.*\.7z$|pcsx2.*win.*64.*\.zip$"
-        Systems   = @("ps2")
         Notes     = "PlayStation 2 emulator"
     },
     @{
         Name      = "RPCS3"
-        Folder    = "rpcs3"
+        Folder    = "RPCS3"
         Repo      = "RPCS3/rpcs3-binaries-win"
         Pattern   = "rpcs3.*win64.*\.7z$"
-        Systems   = @("ps3")
         Notes     = "PlayStation 3 emulator -- requires PS3 firmware (PS3UPDAT.PUP)"
     },
     @{
@@ -475,23 +486,20 @@ $StandaloneEmulators = @(
         Folder    = "duckstation"
         Repo      = "stenzek/duckstation"
         Pattern   = "duckstation.*windows.*x64.*\.zip$"
-        Systems   = @("psx")
         Notes     = "PlayStation 1 emulator (high accuracy)"
     },
     @{
         Name      = "PPSSPP"
-        Folder    = "ppsspp"
+        Folder    = "PPSSPP"
         Repo      = "hrydgard/ppsspp"
         Pattern   = "ppsspp.*windows.*64.*\.zip$|PPSSPPWindows64.*\.zip$"
-        Systems   = @("psp")
         Notes     = "PlayStation Portable emulator"
     },
     @{
         Name      = "Cemu"
-        Folder    = "cemu"
+        Folder    = "Cemu"
         Repo      = "cemu-project/Cemu"
         Pattern   = "cemu.*windows.*x64.*\.zip$"
-        Systems   = @("wiiu")
         Notes     = "Wii U emulator"
     },
     @{
@@ -499,31 +507,27 @@ $StandaloneEmulators = @(
         Folder    = "xemu"
         Repo      = "xemu-project/xemu"
         Pattern   = "xemu.*win.*\.zip$"
-        Systems   = @("xbox")
         Notes     = "Original Xbox emulator -- requires MCPX boot ROM + flash BIOS"
     },
     @{
         Name      = "Xenia Canary"
-        Folder    = "xenia"
+        Folder    = "Xenia"
         Repo      = "xenia-canary/xenia-canary"
         Pattern   = "xenia_canary.*\.zip$"
-        Systems   = @("xbox360")
         Notes     = "Xbox 360 emulator (experimental)"
     },
     @{
         Name      = "melonDS"
-        Folder    = "melonds"
+        Folder    = "melonDS"
         Repo      = "melonDS-emu/melonDS"
         Pattern   = "melonDS.*win.*x64.*\.zip$|melonDS.*windows.*\.zip$"
-        Systems   = @("nds")
         Notes     = "Nintendo DS emulator"
     },
     @{
         Name      = "mGBA"
-        Folder    = "mgba"
+        Folder    = "mGBA"
         Repo      = "mgba-emu/mgba"
         Pattern   = "mGBA.*win.*64.*\.7z$|mGBA.*windows.*\.zip$"
-        Systems   = @("gba","gb","gbc")
         Notes     = "Game Boy / GBC / GBA emulator"
     },
     @{
@@ -531,39 +535,34 @@ $StandaloneEmulators = @(
         Folder    = "dosbox-staging"
         Repo      = "dosbox-staging/dosbox-staging"
         Pattern   = "dosbox-staging.*windows.*x86_64.*\.zip$|dosbox-staging.*win.*\.zip$"
-        Systems   = @("dos")
         Notes     = "Enhanced DOSBox fork for DOS gaming"
     },
     @{
         Name      = "ScummVM"
-        Folder    = "scummvm"
+        Folder    = "ScummVM"
         Repo      = "scummvm/scummvm"
         Pattern   = "scummvm.*win32.*x86_64.*\.zip$|scummvm.*windows.*\.zip$"
-        Systems   = @("scummvm")
         Notes     = "Adventure game engine"
     },
     @{
         Name      = "Flycast"
-        Folder    = "flycast"
+        Folder    = "Flycast"
         Repo      = "flyinghead/flycast"
         Pattern   = "flycast.*win.*x64.*\.zip$|flycast.*windows.*\.zip$"
-        Systems   = @("dreamcast","naomi","naomi2","atomiswave")
         Notes     = "Dreamcast / NAOMI / Atomiswave emulator"
     },
     @{
         Name      = "Vita3K"
-        Folder    = "vita3k"
+        Folder    = "Vita3K"
         Repo      = "Vita3K/Vita3K"
         Pattern   = "Vita3K.*windows.*\.zip$|windows.*\.zip$"
-        Systems   = @("psvita")
         Notes     = "PlayStation Vita emulator (experimental)"
     },
     @{
         Name      = "MAME"
-        Folder    = "mame"
+        Folder    = "MAME"
         Repo      = "mamedev/mame"
         Pattern   = "mame.*64bit.*\.exe$|mame.*win.*\.zip$"
-        Systems   = @("mame","cps","cps2","cps3","model2","model3","neogeo","daphne")
         Notes     = "Multi-Arcade Machine Emulator"
     }
 )
@@ -572,19 +571,22 @@ $StandaloneEmulators = @(
 #  BIOS FILE REFERENCE
 # ==============================================================================
 
-$BIOSPath = $Paths.BIOS
-$RASystemPath = $Paths.RASystem
-$EmulatorsPath = $Paths.Emulators
+$biosDir = $Paths.RASystem
+$emuDir = $Paths.Emulators
 
 $BIOSGuide = @"
 +==============================================================================+
 |               BIOS / FIRMWARE FILE REFERENCE GUIDE                           |
 |                                                                              |
-|  Place all BIOS files in: $BIOSPath
-|  RetroArch also checks:   $RASystemPath
+|  RetroArch BIOS path:  $biosDir
+|  (This is Emulators\RetroArch\system\ inside your ES-DE folder)             |
 |                                                                              |
 |  All BIOS files must be legally obtained from hardware you own.              |
 +==============================================================================+
+
+  Most BIOS files go in: Emulators\RetroArch\system\
+  PCSX2 BIOS goes in:    Emulators\PCSX2\bios\
+  RPCS3 firmware:        Install via RPCS3 > File > Install Firmware
 
 -----------------------------------------------
   PLAYSTATION (PSX) -- DuckStation / Beetle PSX
@@ -596,11 +598,10 @@ $BIOSGuide = @"
 -----------------------------------------------
   PLAYSTATION 2 -- PCSX2
 -----------------------------------------------
-  Place in: $EmulatorsPath\pcsx2\bios\
+  Place in: $emuDir\PCSX2\bios\
   SCPH-70012.bin -- PS2 BIOS (USA, v12)
   SCPH-70004.bin -- PS2 BIOS (Europe)
   SCPH-70000.bin -- PS2 BIOS (Japan)
-  (Any valid PS2 BIOS dump will work; PCSX2 auto-detects)
 
 -----------------------------------------------
   PLAYSTATION 3 -- RPCS3
@@ -609,7 +610,7 @@ $BIOSGuide = @"
   Install via RPCS3 > File > Install Firmware
 
 -----------------------------------------------
-  SEGA DREAMCAST -- Flycast / RetroArch Flycast
+  SEGA DREAMCAST -- Flycast
 -----------------------------------------------
   dc\dc_boot.bin     -- Dreamcast BIOS       (MD5: e10c53c2f8b90bab96ead2d368858623)
   dc\dc_flash.bin    -- Dreamcast Flash ROM   (MD5: 0a93f7940c455905bea6e392dfde92a4)
@@ -628,11 +629,10 @@ $BIOSGuide = @"
   bios_CD_J.bin      -- Sega CD BIOS (Japan)
 
 -----------------------------------------------
-  SEGA NAOMI / NAOMI 2 / ATOMISWAVE
+  NAOMI / ATOMISWAVE
 -----------------------------------------------
   dc\naomi.zip       -- NAOMI BIOS
   dc\awbios.zip      -- Atomiswave BIOS
-  (Place in dc subfolder within BIOS directory)
 
 -----------------------------------------------
   NINTENDO DS -- melonDS / DeSmuME
@@ -640,30 +640,14 @@ $BIOSGuide = @"
   bios7.bin          -- ARM7 BIOS             (MD5: df692a80a5b1bc90728bc3dfc76cd948)
   bios9.bin          -- ARM9 BIOS             (MD5: a392174eb3e572fed6447e956bde4b25)
   firmware.bin       -- NDS Firmware           (MD5: 145eaef5bd3037cbc247c213bb3da1b3)
-  (melonDS can run without BIOS using built-in HLE, but some games need them)
 
 -----------------------------------------------
-  NINTENDO 3DS -- Citra (and forks)
+  GBA / GB / GBC (optional, for boot logos)
 -----------------------------------------------
-  Requires AES keys dumped from your 3DS console.
-  aes_keys.txt       -- Place in Citra user directory
-
------------------------------------------------
-  GAME BOY ADVANCE -- mGBA / RetroArch mGBA
------------------------------------------------
-  gba_bios.bin       -- GBA BIOS (optional)   (MD5: a860e8c0b6d573d191e4ec7db1b1e4f6)
-
------------------------------------------------
-  GAME BOY / GAME BOY COLOR -- Gambatte
------------------------------------------------
-  gb_bios.bin        -- Game Boy BIOS (optional)  (MD5: 32fbbd84168d3482956eb3c5051637f5)
-  gbc_bios.bin       -- GBC BIOS (optional)       (MD5: dbfce9db9deaa2567f6a84fde55f9680)
-  sgb_bios.bin       -- Super Game Boy BIOS       (MD5: d574d4f9c12f305571c6b0ce18f0c563)
-
------------------------------------------------
-  SUPER NINTENDO -- BSnes (Super Game Boy)
------------------------------------------------
-  sgb2_boot.bin      -- Super Game Boy 2 BIOS
+  gba_bios.bin       -- GBA BIOS              (MD5: a860e8c0b6d573d191e4ec7db1b1e4f6)
+  gb_bios.bin        -- Game Boy BIOS          (MD5: 32fbbd84168d3482956eb3c5051637f5)
+  gbc_bios.bin       -- GBC BIOS               (MD5: dbfce9db9deaa2567f6a84fde55f9680)
+  sgb_bios.bin       -- Super Game Boy BIOS    (MD5: d574d4f9c12f305571c6b0ce18f0c563)
 
 -----------------------------------------------
   FAMICOM DISK SYSTEM
@@ -671,57 +655,30 @@ $BIOSGuide = @"
   disksys.rom        -- FDS BIOS              (MD5: ca30b50f880eb660a320571e2a116f56)
 
 -----------------------------------------------
-  NEC PC ENGINE CD / TURBOGRAFX-CD
+  PC ENGINE CD / TURBOGRAFX-CD
 -----------------------------------------------
   syscard3.pce       -- System Card 3.0       (MD5: 38179df8f4ac870017db21ebcbf53114)
 
 -----------------------------------------------
-  NEC PC-FX
+  PC-FX
 -----------------------------------------------
   pcfx.rom           -- PC-FX BIOS            (MD5: 08e36edbea28a017f79f8d4f7ff9b6d7)
 
 -----------------------------------------------
-  NEC PC-9801 -- Neko Project II
------------------------------------------------
-  np2kai\bios.rom    -- PC-98 BIOS
-  np2kai\font.bmp    -- PC-98 Font
-  np2kai\FONT.ROM    -- PC-98 Font ROM
-  np2kai\itf.rom     -- ITF ROM
-  np2kai\sound.rom   -- Sound BIOS
-
------------------------------------------------
-  SHARP X68000 -- PX68k
------------------------------------------------
-  keropi\iplrom.dat  -- X68000 IPL ROM
-  keropi\cgrom.dat   -- X68000 CG ROM
-
------------------------------------------------
-  3DO INTERACTIVE MULTIPLAYER -- Opera
+  3DO -- Opera
 -----------------------------------------------
   panafz1.bin        -- Panasonic FZ-1 BIOS   (MD5: f47264dd47fe30f73ab3c010015c155b)
   panafz10.bin       -- Panasonic FZ-10 BIOS  (MD5: 51f2f43ae2f3508a14d9f56597e2d3ce)
-  goldstar.bin       -- Goldstar GDO-101M     (MD5: 8970fc987ab89a7f64da9f8a8c4333ff)
 
 -----------------------------------------------
-  COLECOVISION
+  COLECOVISION / INTELLIVISION
 -----------------------------------------------
   colecovision.rom   -- ColecoVision BIOS     (MD5: 2c66f5911e5b42b8ebe113403548eee7)
+  exec.bin           -- Intellivision Exec    (MD5: 62e761035cb657903761800f4437b8af)
+  grom.bin           -- Intellivision GROM    (MD5: 0cd5946c6473e42e8e4c2137785e427f)
 
 -----------------------------------------------
-  INTELLIVISION
------------------------------------------------
-  exec.bin           -- Executive ROM          (MD5: 62e761035cb657903761800f4437b8af)
-  grom.bin           -- Graphics ROM           (MD5: 0cd5946c6473e42e8e4c2137785e427f)
-
------------------------------------------------
-  MSX / MSX2 / MSX turboR -- blueMSX
------------------------------------------------
-  Machines\           -- Directory of MSX machine configs
-  Databases\          -- Directory of MSX databases
-  (Download the full blueMSX Data Pack)
-
------------------------------------------------
-  COMMODORE AMIGA -- PUAE
+  AMIGA -- PUAE
 -----------------------------------------------
   kick34005.A500     -- Amiga 500 Kickstart 1.3
   kick40063.A600     -- Amiga 600 Kickstart 2.05
@@ -730,76 +687,33 @@ $BIOSGuide = @"
   kick40060.CD32.ext -- CD32 Extended ROM
 
 -----------------------------------------------
-  ATARI 5200 / 800 -- Atari800
+  ATARI
 -----------------------------------------------
   5200.rom           -- Atari 5200 BIOS       (MD5: 281f20ea4320404ec820fb7ec0693b38)
   ATARIXL.ROM        -- Atari XL/XE OS
   ATARIBAS.ROM       -- Atari BASIC
-  ATARIOSA.ROM       -- Atari OS/A
-
------------------------------------------------
-  ATARI 7800
------------------------------------------------
   7800 BIOS (U).rom  -- Atari 7800 BIOS       (MD5: 0763f1ffb006ddbe32e52d497ee848ae)
-
------------------------------------------------
-  ATARI LYNX
------------------------------------------------
   lynxboot.img       -- Lynx Boot ROM         (MD5: fcd403db69f54290b51035d82f835e7b)
+  tos.img            -- Atari ST TOS ROM
 
 -----------------------------------------------
-  ATARI ST -- Hatari
+  NEO GEO / ARCADE
 -----------------------------------------------
-  tos.img            -- TOS ROM (any version)
-
------------------------------------------------
-  NEO GEO -- FBNeo / MAME
------------------------------------------------
-  neogeo.zip         -- Neo Geo BIOS (place in ROMs dir alongside games)
-
------------------------------------------------
-  FAIRCHILD CHANNEL F -- FreeChaF
------------------------------------------------
-  sl31253.bin        -- ChannelF BIOS 1       (MD5: ac9804d4c0e9d07e33472e3726ed15c3)
-  sl31254.bin        -- ChannelF BIOS 2       (MD5: da98f4f2c0ef0dcb26db376c069ba5cc)
-
------------------------------------------------
-  MAGNAVOX ODYSSEY 2 / VIDEOPAC
------------------------------------------------
-  o2rom.bin          -- Odyssey 2 BIOS        (MD5: 562d5ebf9e030a40d6fabfc2f33139fd)
-  c52.bin            -- Videopac+ G7400 BIOS
+  neogeo.zip         -- Neo Geo BIOS (also place in ROMs\neogeo\)
 
 -----------------------------------------------
   XBOX (ORIGINAL) -- Xemu
 -----------------------------------------------
   mcpx_1.0.bin       -- MCPX Boot ROM
-  Complex_4627.bin   -- Flash BIOS image (or other compatible BIOS)
-  (Place in xemu directory)
-
------------------------------------------------
-  PHILIPS CD-i
------------------------------------------------
-  cdimono1.zip       -- CD-i BIOS (MAME format)
-  cdibios.zip        -- Alternative BIOS pack
-
------------------------------------------------
-  FUJITSU FM TOWNS
------------------------------------------------
-  fmtowns\fmt_dic.rom    -- Dictionary ROM
-  fmtowns\fmt_dos.rom    -- DOS ROM
-  fmtowns\fmt_fnt.rom    -- Font ROM
-  fmtowns\fmt_sys.rom    -- System ROM
+  Complex_4627.bin   -- Flash BIOS image
 
 -----------------------------------------------
   NOTES
 -----------------------------------------------
-  * Many RetroArch cores also check the "system" subfolder inside RetroArch.
-    A symbolic link or copy in both locations ensures maximum compatibility.
-  * MAME/FBNeo ROMs must match the exact version of the emulator.
-  * Neo Geo BIOS (neogeo.zip) should be in BOTH the bios folder AND the
-    roms/neogeo folder for compatibility with different emulator configs.
-  * For systems not listed here, the emulator likely does not require BIOS files
-    (software-only emulation / HLE).
+  * All paths above are relative to Emulators\RetroArch\system\ unless noted.
+  * Create subdirectories (dc\, np2kai\, keropi\) as needed for specific cores.
+  * Neo Geo BIOS (neogeo.zip) should be in BOTH the BIOS folder AND ROMs\neogeo\.
+  * For systems not listed, the emulator likely does not require BIOS (HLE mode).
 "@
 
 # ==============================================================================
@@ -813,40 +727,41 @@ Write-Host "  Batocera x86_64 parity - $(Get-Date -Format 'yyyy-MM-dd')" -Foregr
 Write-Host "================================================================" -ForegroundColor Magenta
 Write-Host ""
 Write-Host "  Base path: $BasePath" -ForegroundColor White
+Write-Host "  (This will be your ES-DE portable root)" -ForegroundColor Gray
 Write-Host ""
 
 # -- 1. Create directory structure ---------------------------------------------
 Write-Step "Creating directory structure..."
 
-foreach ($dir in $Paths.Values) {
-    Ensure-Dir $dir
-}
+Ensure-Dir $BasePath
+Ensure-Dir $Paths.Downloads
+Ensure-Dir $Paths.ROMs
+Ensure-Dir $Paths.Emulators
+Ensure-Dir $Paths.RetroArch
+Ensure-Dir $Paths.RACores
+Ensure-Dir $Paths.RASystem
 
-# ROM directories
+# ROM directories -- these go in ROMs/ which ES-DE reads by default in portable mode
 foreach ($sys in $Systems.Keys) {
     Ensure-Dir "$($Paths.ROMs)\$sys"
 }
 
-# BIOS subdirectories
+# BIOS subdirectories inside RetroArch\system\
 foreach ($sub in @("dc","np2kai","keropi","fmtowns","Machines","Databases")) {
-    Ensure-Dir "$($Paths.BIOS)\$sub"
-}
-
-# Save/state directories per system
-foreach ($sys in $Systems.Keys) {
-    Ensure-Dir "$($Paths.Saves)\$sys"
-    Ensure-Dir "$($Paths.States)\$sys"
+    Ensure-Dir "$($Paths.RASystem)\$sub"
 }
 
 $sysCount = $Systems.Count
-Write-OK "Created $sysCount ROM directories, BIOS structure, saves and states"
+Write-OK "Created $sysCount ROM directories in ROMs\ and BIOS structure in Emulators\RetroArch\system\"
 
 # -- 2. Generate BIOS guide ----------------------------------------------------
 Write-Step "Writing BIOS reference guide..."
-$BIOSGuide | Out-File -FilePath "$($Paths.BIOS)\BIOS_README.txt" -Encoding ASCII -Force
-Write-OK "BIOS guide written to $($Paths.BIOS)\BIOS_README.txt"
+$BIOSGuide | Out-File -FilePath "$($Paths.RASystem)\BIOS_README.txt" -Encoding ASCII -Force
+# Also put a copy at the base for visibility
+$BIOSGuide | Out-File -FilePath "$BasePath\BIOS_README.txt" -Encoding ASCII -Force
+Write-OK "BIOS guide written to BIOS_README.txt"
 
-# -- 3. Generate ROM directory README files ------------------------------------
+# -- 3. Generate ROM directory info files --------------------------------------
 Write-Step "Writing ROM directory info files..."
 foreach ($sys in $Systems.Keys) {
     $info = $Systems[$sys]
@@ -868,16 +783,14 @@ Write-OK "ROM info files created for $sysCount systems"
 if ($SkipDownloads) {
     Write-Host ""
     Write-Host "  Directory structure created. Skipping downloads (-SkipDownloads)." -ForegroundColor Yellow
-    Write-Host "  Manually download emulators to: $($Paths.Emulators)" -ForegroundColor Yellow
+    Write-Host "  Manually download ES-DE portable from https://es-de.org" -ForegroundColor Yellow
+    Write-Host "  Extract it so ES-DE.exe is at: $BasePath\ES-DE.exe" -ForegroundColor Yellow
     Write-Host ""
     exit 0
 }
 
-# -- 4. Download ES-DE ---------------------------------------------------------
-# ES-DE is hosted on GitLab (not GitHub). We try the GitLab releases API first,
-# then fall back to a known-good direct download URL for the Windows portable build.
-Write-Step "Downloading EmulationStation Desktop Edition (ES-DE)..."
-Ensure-Dir $Paths.ESDE
+# -- 4. Download and extract ES-DE portable ------------------------------------
+Write-Step "Downloading EmulationStation Desktop Edition (ES-DE) portable..."
 
 $esdeUrl = $null
 $esdeDl = "$($Paths.Downloads)\esde.zip"
@@ -890,7 +803,6 @@ try {
     $latestRelease = $esdeReleases | Select-Object -First 1
     if ($latestRelease) {
         Write-Info "Found ES-DE $($latestRelease.tag_name)"
-        # Look for the Windows portable link in release assets
         $windowsLink = $latestRelease.assets.links |
             Where-Object { $_.name -match 'portable' -or $_.name -match '[Ww]indows.*portable' } |
             Select-Object -First 1
@@ -898,7 +810,6 @@ try {
             $esdeUrl = $windowsLink.direct_asset_url
             if (-not $esdeUrl) { $esdeUrl = $windowsLink.url }
         }
-        # If no portable-specific link, try any Windows link
         if (-not $esdeUrl) {
             $windowsLink = $latestRelease.assets.links |
                 Where-Object { $_.name -match '[Ww]indows' } |
@@ -920,20 +831,67 @@ if (-not $esdeUrl) {
     $esdeUrl = "https://gitlab.com/es-de/emulationstation-de/-/package_files/243196975/download"
 }
 
-if (Download-File -Url $esdeUrl -Destination $esdeDl -Description "ES-DE") {
-    Extract-Archive -Archive $esdeDl -Destination $Paths.ESDE -Description "ES-DE"
+if (Download-File -Url $esdeUrl -Destination $esdeDl -Description "ES-DE portable") {
+    # Extract to a temp staging directory first
+    $esdeStaging = "$($Paths.Downloads)\_esde_staging"
+    if (Test-Path $esdeStaging) { Remove-Item -Path $esdeStaging -Recurse -Force }
+    Extract-Archive -Archive $esdeDl -Destination $esdeStaging -Description "ES-DE"
+
+    # The ZIP typically extracts into a subfolder like "EmulationStation-DE".
+    # We need to move the contents up into BasePath so ES-DE.exe is at the root.
+    Write-Info "Installing ES-DE to $BasePath..."
+    Flatten-SingleSubfolder $esdeStaging
+
+    # Copy all ES-DE files to BasePath (don't overwrite our ROMs/Emulators dirs)
+    Get-ChildItem -Path $esdeStaging -Force | ForEach-Object {
+        $destItem = Join-Path $BasePath $_.Name
+        # Skip if it is our ROMs or Emulators directory
+        if ($_.Name -eq "ROMs" -or $_.Name -eq "Emulators" -or $_.Name -eq ".downloads") {
+            return
+        }
+        if (Test-Path $destItem) {
+            # Overwrite files, merge directories
+            if ($_.PSIsContainer) {
+                Copy-Item -Path $_.FullName -Destination $BasePath -Recurse -Force
+            }
+            else {
+                Copy-Item -Path $_.FullName -Destination $destItem -Force
+            }
+        }
+        else {
+            Move-Item -Path $_.FullName -Destination $BasePath -Force
+        }
+    }
+
+    # Verify ES-DE.exe exists
+    $esdeExe = Get-ChildItem -Path $BasePath -Filter "ES-DE.exe" -ErrorAction SilentlyContinue
+    if ($esdeExe) {
+        Write-OK "ES-DE.exe installed at $($esdeExe.FullName)"
+    }
+    else {
+        # Try to find it in case the name is different
+        $anyExe = Get-ChildItem -Path $BasePath -Filter "*.exe" |
+            Where-Object { $_.Name -notmatch 'unins' -and $_.Name -ne '7z.exe' } |
+            Select-Object -First 1
+        if ($anyExe) {
+            Write-OK "ES-DE executable found: $($anyExe.Name)"
+        }
+        else {
+            Write-Err "Could not find ES-DE.exe in $BasePath -- check the extraction"
+        }
+    }
+
+    # Clean up staging
+    Remove-Item -Path $esdeStaging -Recurse -Force -ErrorAction SilentlyContinue
 }
 else {
     Write-Err "Could not download ES-DE. Get it manually from https://es-de.org"
+    Write-Info "Extract the portable ZIP so ES-DE.exe is at: $BasePath\ES-DE.exe"
 }
 
 # -- 5. Download RetroArch -----------------------------------------------------
-Write-Step "Downloading RetroArch..."
-Ensure-Dir $Paths.RetroArch
-Ensure-Dir $Paths.RACores
-Ensure-Dir $Paths.RASystem
+Write-Step "Downloading RetroArch into Emulators\RetroArch..."
 
-# RetroArch stable from buildbot
 $raUrl = "https://buildbot.libretro.com/stable/1.19.1/windows/x86_64/RetroArch.7z"
 $raFallback = "https://buildbot.libretro.com/stable/1.19.1/windows/x86_64/RetroArch.zip"
 $raDl = "$($Paths.Downloads)\retroarch.7z"
@@ -942,13 +900,19 @@ $raDlZip = "$($Paths.Downloads)\retroarch.zip"
 $raDownloaded = Download-File -Url $raUrl -Destination $raDl -Description "RetroArch (7z)"
 if ($raDownloaded) {
     Extract-Archive -Archive $raDl -Destination $Paths.RetroArch -Description "RetroArch"
+    Flatten-SingleSubfolder $Paths.RetroArch
 }
 else {
     $raDownloaded = Download-File -Url $raFallback -Destination $raDlZip -Description "RetroArch (zip)"
     if ($raDownloaded) {
         Extract-Archive -Archive $raDlZip -Destination $Paths.RetroArch -Description "RetroArch"
+        Flatten-SingleSubfolder $Paths.RetroArch
     }
 }
+
+# Ensure cores and system dirs exist (may have been created by extraction)
+Ensure-Dir $Paths.RACores
+Ensure-Dir $Paths.RASystem
 
 # -- 6. Download RetroArch Cores -----------------------------------------------
 $coreTotal = $RetroArchCores.Count
@@ -958,14 +922,14 @@ $coreBaseUrl = "https://buildbot.libretro.com/nightly/windows/x86_64/latest"
 $coreCount = 0
 $coreFails = 0
 
+Ensure-Dir "$($Paths.Downloads)\cores"
+
 foreach ($core in $RetroArchCores.Keys) {
     $coreDll = "${core}_libretro.dll"
     $coreZip = "${coreDll}.zip"
     $coreUrl = "$coreBaseUrl/$coreZip"
     $coreDest = "$($Paths.Downloads)\cores\$coreZip"
     $coreFinal = "$($Paths.RACores)\$coreDll"
-
-    Ensure-Dir "$($Paths.Downloads)\cores"
 
     if (Test-Path $coreFinal) {
         $coreCount++
@@ -979,7 +943,6 @@ foreach ($core in $RetroArchCores.Keys) {
     }
     catch {
         $coreFails++
-        # Silent -- many cores may not exist on nightly for every name variant
     }
 }
 
@@ -988,12 +951,12 @@ Write-OK "Downloaded $coreCount cores ($coreFails unavailable/failed)"
 # -- 7. Download Standalone Emulators ------------------------------------------
 if (-not $RetroArchOnly) {
     $emuTotal = $StandaloneEmulators.Count
-    Write-Step "Downloading standalone emulators ($emuTotal emulators)..."
+    Write-Step "Downloading standalone emulators into Emulators\ ($emuTotal emulators)..."
 
     foreach ($emu in $StandaloneEmulators) {
         Write-Info "Fetching $($emu.Name)..."
-        $emuDir = "$($Paths.Emulators)\$($emu.Folder)"
-        Ensure-Dir $emuDir
+        $emuInstallDir = "$($Paths.Emulators)\$($emu.Folder)"
+        Ensure-Dir $emuInstallDir
 
         $release = Get-GitHubLatestRelease -Repo $emu.Repo
         if (-not $release) {
@@ -1003,7 +966,6 @@ if (-not $RetroArchOnly) {
 
         $assetUrl = Get-GitHubAssetUrl -Release $release -Pattern $emu.Pattern
         if (-not $assetUrl) {
-            # Try broader match
             $assetUrl = $release.assets |
                 Where-Object { $_.name -match 'win' -and $_.name -match '(64|x64|x86_64)' } |
                 Select-Object -First 1 |
@@ -1019,180 +981,124 @@ if (-not $RetroArchOnly) {
 
         if (Download-File -Url $assetUrl -Destination $dlPath -Description $emu.Name) {
             if ($ext -eq ".exe") {
-                # Standalone exe -- just copy
-                Copy-Item -Path $dlPath -Destination "$emuDir\$($emu.Folder).exe" -Force
+                Copy-Item -Path $dlPath -Destination "$emuInstallDir\$($emu.Folder).exe" -Force
                 Write-OK "Installed $($emu.Name)"
             }
             else {
-                Extract-Archive -Archive $dlPath -Destination $emuDir -Description $emu.Name
+                Extract-Archive -Archive $dlPath -Destination $emuInstallDir -Description $emu.Name
+                Flatten-SingleSubfolder $emuInstallDir
             }
         }
     }
 }
 else {
     Write-Skip "Skipping standalone emulators (-RetroArchOnly)"
+    $emuTotal = 0
 }
 
-# -- 8. Create RetroArch system BIOS symlink -----------------------------------
-Write-Step "Linking BIOS directory to RetroArch system folder..."
-try {
-    $linkTarget = $Paths.BIOS
-    $linkPath = $Paths.RASystem
+# -- 8. Generate quick-start guide ---------------------------------------------
+Write-Step "Generating quick-start guide..."
 
-    $existingItem = Get-Item $linkPath -ErrorAction SilentlyContinue
-    $isJunction = $false
-    if ($existingItem) {
-        $isJunction = $existingItem.Attributes.ToString().Contains("ReparsePoint")
-    }
-
-    if (-not $isJunction) {
-        # Try junction first (no admin needed)
-        cmd /c mklink /J "`"$linkPath`"" "`"$linkTarget`"" 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            Write-OK "Created junction: RetroArch\system -> bios"
-        }
-        else {
-            Write-Info "Junction failed -- BIOS files should be copied to both locations"
-        }
-    }
-}
-catch {
-    Write-Info "Could not link BIOS dirs. Copy BIOS files to both $($Paths.BIOS) and $($Paths.RASystem)"
-}
-
-# -- 9. Generate ES-DE custom systems config snippet --------------------------
-Write-Step "Generating ES-DE configuration notes..."
-
-$romsPath = $Paths.ROMs
-$retroArchPath = $Paths.RetroArch
-$coresPath = $Paths.RACores
-
-$esdeConfig = @"
+$guideText = @"
 ==============================================================================
- ES-DE Configuration Notes
+ ES-DE Portable -- Quick Start Guide
 ==============================================================================
 
- ES-DE will auto-detect most settings. The key paths to configure in ES-DE:
+ Your ES-DE portable installation is at: $BasePath
 
- ROM Directory:        $romsPath
- Media Directory:      $BasePath\downloaded_media
+ DIRECTORY LAYOUT (matching ES-DE portable defaults):
+   $BasePath\ES-DE.exe          -- Launch this
+   $BasePath\ROMs\              -- Your game ROMs (one subfolder per system)
+   $BasePath\Emulators\         -- All emulators live here
+   $BasePath\Emulators\RetroArch\       -- RetroArch + cores
+   $BasePath\Emulators\RetroArch\system\ -- BIOS/firmware files go here
 
- ES-DE Settings > Other Settings:
-   - Set "ROM directory" to the path above
-   - Set "Media directory" to $BasePath\downloaded_media
+ FIRST LAUNCH:
+   1. Run ES-DE.exe
+   2. ES-DE will auto-detect ROMs\ as the ROM directory (portable default)
+   3. ES-DE will auto-find emulators in Emulators\ via es_find_rules.xml
+   4. No manual path configuration should be needed!
 
- ES-DE Settings > Emulator / core assignments (per system):
-   Default emulator should be RetroArch for most systems.
-   Configure exceptions for standalone emulators:
+ ADDING GAMES:
+   Drop your legally obtained ROM files into the matching ROMs\ subfolder.
+   For example: ROMs\nes\, ROMs\snes\, ROMs\psx\, etc.
 
-   PlayStation 2   > PCSX2 (standalone)     : $EmulatorsPath\pcsx2\
-   PlayStation 3   > RPCS3 (standalone)     : $EmulatorsPath\rpcs3\
-   PlayStation 1   > DuckStation (standalone): $EmulatorsPath\duckstation\
-   GameCube/Wii    > Dolphin (standalone)   : $EmulatorsPath\dolphin\
-   Wii U           > Cemu (standalone)      : $EmulatorsPath\cemu\
-   Xbox            > Xemu (standalone)      : $EmulatorsPath\xemu\
-   Xbox 360        > Xenia (standalone)     : $EmulatorsPath\xenia\
-   Nintendo DS     > melonDS (standalone)   : $EmulatorsPath\melonds\
-   PSP             > PPSSPP (standalone)    : $EmulatorsPath\ppsspp\
-   PS Vita         > Vita3K (standalone)    : $EmulatorsPath\vita3k\
-   Dreamcast       > Flycast (standalone)   : $EmulatorsPath\flycast\
-   Arcade/MAME     > MAME (standalone)      : $EmulatorsPath\mame\
-   DOS             > DOSBox Staging         : $EmulatorsPath\dosbox-staging\
-   ScummVM         > ScummVM (standalone)   : $EmulatorsPath\scummvm\
+ BIOS FILES:
+   See BIOS_README.txt for the full list with MD5 checksums.
+   Most go in: Emulators\RetroArch\system\
+   PCSX2 BIOS goes in: Emulators\PCSX2\bios\
 
- All other systems default to RetroArch with the appropriate core.
+ SCRAPING (box art, screenshots, descriptions):
+   1. Create a free account at https://www.screenscraper.fr/
+   2. In ES-DE: Main Menu > Scraper > ScreenScraper
+   3. Enter your credentials and scrape your collection
 
- RetroArch Location:   $retroArchPath
- RetroArch Cores:      $coresPath
-
-==============================================================================
-
- SCRAPING: ES-DE has a built-in scraper. Go to:
-   Main Menu > Scraper > ScreenScraper (recommended)
-   Create a free account at https://www.screenscraper.fr/
-   Then scrape your ROM collection for box art, descriptions, videos, etc.
+ EMULATOR SELECTION:
+   ES-DE auto-selects the default emulator for each system.
+   To change: highlight a game > press Select > Edit > Alternative Emulator
 
 ==============================================================================
 "@
 
-$esdeConfig | Out-File -FilePath "$($Paths.Config)\ES-DE_SETUP_NOTES.txt" -Encoding ASCII -Force
-Write-OK "Configuration notes written to $($Paths.Config)\ES-DE_SETUP_NOTES.txt"
+$guideText | Out-File -FilePath "$BasePath\QUICK_START.txt" -Encoding ASCII -Force
+Write-OK "Quick-start guide written to QUICK_START.txt"
 
-# -- 10. Create a quick-launch batch file --------------------------------------
+# -- 9. Create launcher batch file ---------------------------------------------
 Write-Step "Creating launcher..."
 
-$esdePath = $Paths.ESDE
-
-$launcher = @"
+$launcherText = @"
 @echo off
 title EmulationStation Desktop Edition
-echo Starting ES-DE...
-cd /d "$esdePath"
-
-REM Try common ES-DE executable names
+cd /d "$BasePath"
 if exist "ES-DE.exe" (
     start "" "ES-DE.exe"
-    exit
+) else (
+    echo ES-DE.exe not found in $BasePath
+    echo Download the portable version from https://es-de.org
+    pause
 )
-if exist "EmulationStation.exe" (
-    start "" "EmulationStation.exe"
-    exit
-)
-
-REM Search for any exe in the ES-DE folder
-for %%f in (*.exe) do (
-    start "" "%%f"
-    exit
-)
-
-echo Could not find ES-DE executable. Please check $esdePath
-pause
 "@
 
-$launcher | Out-File -FilePath "$BasePath\Launch_ES-DE.bat" -Encoding ASCII -Force
-Write-OK "Launcher created: $BasePath\Launch_ES-DE.bat"
+$launcherText | Out-File -FilePath "$BasePath\Launch_ES-DE.bat" -Encoding ASCII -Force
+Write-OK "Launcher created: Launch_ES-DE.bat"
 
-# -- 11. Summary ---------------------------------------------------------------
+# -- 10. Summary ---------------------------------------------------------------
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host "                      SETUP COMPLETE" -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Directory structure:" -ForegroundColor White
-Write-Host "    $BasePath"
-Write-Host "    |-- emulators\        <- All emulators (ES-DE, RetroArch, standalone)"
-Write-Host "    |   |-- ES-DE\        <- EmulationStation Desktop Edition"
-Write-Host "    |   |-- RetroArch\    <- RetroArch portable with cores"
-Write-Host "    |   |-- dolphin\      <- GameCube / Wii"
-Write-Host "    |   |-- pcsx2\        <- PlayStation 2"
-Write-Host "    |   |-- rpcs3\        <- PlayStation 3"
-Write-Host "    |   |-- duckstation\  <- PlayStation 1"
-Write-Host "    |   |-- ppsspp\       <- PSP"
-Write-Host "    |   |-- cemu\         <- Wii U"
-Write-Host "    |   |-- xemu\         <- Xbox"
-Write-Host "    |   |-- xenia\        <- Xbox 360"
-Write-Host "    |   |-- melonds\      <- Nintendo DS"
-Write-Host "    |   |-- mgba\         <- GBA / GB / GBC"
-Write-Host "    |   |-- flycast\      <- Dreamcast / NAOMI"
-Write-Host "    |   |-- vita3k\       <- PS Vita"
-Write-Host "    |   |-- mame\         <- Arcade (MAME)"
-Write-Host "    |   |-- dosbox-staging\ <- MS-DOS"
-Write-Host "    |   \-- scummvm\      <- ScummVM"
-Write-Host "    |-- roms\             <- $sysCount system folders"
-Write-Host "    |-- bios\             <- BIOS/firmware files (see BIOS_README.txt)"
-Write-Host "    |-- saves\            <- Save files per system"
-Write-Host "    |-- states\           <- Save states per system"
-Write-Host "    |-- config\           <- Configuration files"
-Write-Host "    \-- Launch_ES-DE.bat  <- Quick launcher"
+Write-Host "  $BasePath" -ForegroundColor White
+Write-Host "    |-- ES-DE.exe             <- Launch this!" -ForegroundColor White
+Write-Host "    |-- ROMs\                 <- $sysCount system folders" -ForegroundColor White
+Write-Host "    |   |-- nes\" -ForegroundColor Gray
+Write-Host "    |   |-- snes\" -ForegroundColor Gray
+Write-Host "    |   |-- psx\" -ForegroundColor Gray
+Write-Host "    |   \-- ... (all systems)" -ForegroundColor Gray
+Write-Host "    |-- Emulators\" -ForegroundColor White
+Write-Host "    |   |-- RetroArch\        <- RetroArch + $coreTotal cores" -ForegroundColor White
+Write-Host "    |   |   |-- cores\        <- libretro core DLLs" -ForegroundColor Gray
+Write-Host "    |   |   \-- system\       <- BIOS files go here" -ForegroundColor Gray
+Write-Host "    |   |-- Dolphin\          <- GameCube / Wii" -ForegroundColor Gray
+Write-Host "    |   |-- PCSX2\            <- PlayStation 2" -ForegroundColor Gray
+Write-Host "    |   |-- RPCS3\            <- PlayStation 3" -ForegroundColor Gray
+Write-Host "    |   |-- duckstation\      <- PlayStation 1" -ForegroundColor Gray
+Write-Host "    |   |-- PPSSPP\           <- PSP" -ForegroundColor Gray
+Write-Host "    |   \-- ... (15 standalone emulators)" -ForegroundColor Gray
+Write-Host "    |-- BIOS_README.txt       <- BIOS reference with MD5s" -ForegroundColor White
+Write-Host "    |-- QUICK_START.txt       <- Setup guide" -ForegroundColor White
+Write-Host "    \-- Launch_ES-DE.bat      <- Quick launcher" -ForegroundColor White
 Write-Host ""
 Write-Host "  NEXT STEPS:" -ForegroundColor Yellow
-Write-Host "    1. Read $($Paths.BIOS)\BIOS_README.txt and add your BIOS files" -ForegroundColor White
-Write-Host "    2. Read $($Paths.Config)\ES-DE_SETUP_NOTES.txt for ES-DE config" -ForegroundColor White
-Write-Host "    3. Place your legally obtained ROMs in the appropriate roms\ subfolder" -ForegroundColor White
-Write-Host "    4. Launch ES-DE and configure ROM/media paths" -ForegroundColor White
-Write-Host "    5. Scrape your collection for artwork and metadata" -ForegroundColor White
+Write-Host "    1. Add BIOS files to Emulators\RetroArch\system\ (see BIOS_README.txt)" -ForegroundColor White
+Write-Host "    2. Add your ROM files to the matching ROMs\ subfolders" -ForegroundColor White
+Write-Host "    3. Run ES-DE.exe (or Launch_ES-DE.bat)" -ForegroundColor White
+Write-Host "    4. ES-DE auto-detects ROMs and emulators -- no config needed!" -ForegroundColor White
+Write-Host "    5. Optionally scrape for artwork at screenscraper.fr" -ForegroundColor White
 Write-Host ""
-Write-Host "  Total systems configured: $sysCount" -ForegroundColor Cyan
-Write-Host "  RetroArch cores included: $coreTotal" -ForegroundColor Cyan
-Write-Host "  Standalone emulators:     $emuTotal" -ForegroundColor Cyan
+Write-Host "  Total systems: $sysCount" -ForegroundColor Cyan
+Write-Host "  RetroArch cores: $coreTotal" -ForegroundColor Cyan
+if ($emuTotal -gt 0) {
+    Write-Host "  Standalone emulators: $emuTotal" -ForegroundColor Cyan
+}
 Write-Host ""
