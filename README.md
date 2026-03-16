@@ -2,7 +2,7 @@
 
 A single PowerShell script that bootstraps a complete [ES-DE (EmulationStation Desktop Edition)](https://es-de.org) portable install on Windows 11, targeting full parity with the [Batocera](https://batocera.org) x86_64 system list.
 
-One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standalone emulators (including Nintendo Switch), 100+ ROM directories, and a detailed BIOS reference guide with MD5 checksums — all laid out exactly where ES-DE portable expects to find them.
+One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standalone emulators (including Nintendo Switch), and a detailed BIOS reference guide with MD5 checksums — all laid out exactly where ES-DE portable expects to find them.
 
 ---
 
@@ -13,7 +13,7 @@ One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standa
 | **ES-DE portable** | Downloads the latest ES-DE portable release from GitLab and extracts it so `ES-DE.exe` sits at the install root. |
 | **RetroArch** | Downloads RetroArch portable from the libretro buildbot, then pulls ~80 cores from the nightly channel covering every system from Atari 2600 to Sharp X68000. |
 | **Standalone emulators** | Downloads 16 standalone emulators from their latest GitHub/GitLab releases into `Emulators\` where ES-DE auto-discovers them. |
-| **ROM directories** | Creates `ROMs\<system>\` folders for 100+ systems with `_info.txt` files listing supported extensions. |
+| **ROM directories** | Creates an empty `ROMs\` directory. On first launch, ES-DE generates correctly named subfolders for all 150+ supported systems via its built-in directory generator. |
 | **BIOS guide** | Generates `BIOS_README.txt` listing every required and optional firmware file with MD5 hashes. |
 | **Quick-start guide** | Generates `QUICK_START.txt` with first-launch instructions. |
 | **Launcher** | Creates `Launch_ES-DE.bat` at the install root. |
@@ -60,7 +60,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ```powershell
 # Install to a different drive
-.\Setup-EmulationStation.ps1 -BasePath "D:\Emulation"
+.\Setup-EmulationStation.ps1 -BasePath "D:\EmulationStation"
 
 # Scaffold the folder structure first, download later
 .\Setup-EmulationStation.ps1 -SkipDownloads
@@ -76,13 +76,12 @@ The install root **is** the ES-DE portable root. ES-DE auto-detects `ROMs\` and 
 ```
 C:\EmulationStation\
 |-- ES-DE.exe                       <- Launch this
-|-- ROMs\                           <- ES-DE default ROM path (portable mode)
-|   |-- nes\                        <- Each system has its own folder
-|   |-- snes\                       <-   with a _info.txt listing
-|   |-- psx\                        <-   supported file extensions
+|-- ROMs\                           <- ES-DE generates system folders on first launch
+|   |-- gc\                         <- GameCube (ES-DE names, NOT Batocera names)
+|   |-- snes\
+|   |-- psx\
 |   |-- switch\
-|   |-- ...                         <- 100+ system folders total
-|   \-- mame\
+|   \-- ...                         <- 150+ system folders created by ES-DE
 |-- Emulators\                      <- ES-DE searches here via es_find_rules.xml
 |   |-- RetroArch\                  <- RetroArch portable
 |   |   |-- retroarch.exe
@@ -140,7 +139,7 @@ All 16 are downloaded automatically from their official GitHub/GitLab releases:
 
 ## Supported Systems
 
-The script creates ROM directories and maps emulators for the full Batocera x86_64 system set, including but not limited to:
+ES-DE supports 150+ game systems out of the box. When you click "Generate directory structure" on first launch, it creates ROM folders for all of them. Key systems include:
 
 <details>
 <summary><strong>Nintendo</strong></summary>
@@ -236,11 +235,9 @@ See `BIOS_README.txt` for the complete list.
 
 ## Post-Install Configuration
 
-ES-DE portable auto-detects ROMs and emulators from the directory layout this script creates. **No manual path configuration should be needed on first launch.**
-
 1. Run `ES-DE.exe` (or `Launch_ES-DE.bat`).
-2. ES-DE finds your `ROMs\` and `Emulators\` directories automatically.
-3. Add your legally obtained ROM files to the matching `ROMs\` subfolders.
+2. On first launch, ES-DE will show a dialog because no games are found yet. Click **"Generate directory structure"** to create all system ROM folders with the correct names.
+3. Add your legally obtained ROM files to the matching `ROMs\` subfolders. **Important:** ES-DE uses its own folder names which differ from Batocera (e.g. `gc` not `gamecube`, `n3ds` not `3ds`, `genesis` not `megadrive`). The generated folders have the correct names.
 4. Add BIOS files where needed (see `BIOS_README.txt`).
 5. Optionally, create a free [ScreenScraper](https://www.screenscraper.fr/) account and use ES-DE's built-in scraper to download box art, screenshots, and metadata.
 

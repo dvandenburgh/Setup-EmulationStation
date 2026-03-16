@@ -242,139 +242,15 @@ function Flatten-SingleSubfolder {
 }
 
 # ==============================================================================
-#  SYSTEM / ROM DIRECTORY DEFINITIONS
+#  NOTE ON ROM DIRECTORIES
 # ==============================================================================
-
-$Systems = [ordered]@{
-    # -- Atari ------------------------------------------------------------------
-    "atari2600"       = @{ Name = "Atari 2600";              Ext = ".a26,.bin,.rom,.zip,.7z" }
-    "atari5200"       = @{ Name = "Atari 5200";              Ext = ".a52,.bin,.rom,.zip,.7z" }
-    "atari7800"       = @{ Name = "Atari 7800";              Ext = ".a78,.bin,.rom,.zip,.7z" }
-    "atarijaguar"     = @{ Name = "Atari Jaguar";            Ext = ".j64,.jag,.rom,.zip,.7z" }
-    "atarilynx"       = @{ Name = "Atari Lynx";              Ext = ".lnx,.zip,.7z" }
-    "atarist"         = @{ Name = "Atari ST/STE/TT/Falcon";  Ext = ".st,.stx,.msa,.dim,.ipf,.zip,.7z" }
-    "atarixe"         = @{ Name = "Atari 800/XL/XE";         Ext = ".xex,.atr,.atx,.bin,.rom,.zip,.7z" }
-    # -- Nintendo ---------------------------------------------------------------
-    "nes"             = @{ Name = "Nintendo Entertainment System"; Ext = ".nes,.unf,.unif,.fds,.zip,.7z" }
-    "snes"            = @{ Name = "Super Nintendo";           Ext = ".sfc,.smc,.fig,.swc,.zip,.7z" }
-    "n64"             = @{ Name = "Nintendo 64";              Ext = ".n64,.v64,.z64,.ndd,.zip,.7z" }
-    "gamecube"        = @{ Name = "Nintendo GameCube";        Ext = ".iso,.gcm,.gcz,.ciso,.rvz,.nkit.iso,.wbfs" }
-    "wii"             = @{ Name = "Nintendo Wii";             Ext = ".iso,.wbfs,.gcz,.ciso,.rvz,.nkit.iso" }
-    "wiiu"            = @{ Name = "Nintendo Wii U";           Ext = ".wua,.wux,.rpx,.wud" }
-    "switch"          = @{ Name = "Nintendo Switch";          Ext = ".nsp,.xci,.nca,.nsz,.xcz" }
-    "gb"              = @{ Name = "Game Boy";                 Ext = ".gb,.gbc,.zip,.7z" }
-    "gbc"             = @{ Name = "Game Boy Color";           Ext = ".gbc,.gb,.zip,.7z" }
-    "gba"             = @{ Name = "Game Boy Advance";         Ext = ".gba,.zip,.7z" }
-    "nds"             = @{ Name = "Nintendo DS";              Ext = ".nds,.zip,.7z" }
-    "n3ds"            = @{ Name = "Nintendo 3DS";             Ext = ".3ds,.cia,.cxi,.app,.3dsx" }
-    "fds"             = @{ Name = "Famicom Disk System";      Ext = ".fds,.nes,.zip,.7z" }
-    "satellaview"     = @{ Name = "Satellaview";              Ext = ".bs,.sfc,.smc,.zip,.7z" }
-    "sufami"          = @{ Name = "SuFami Turbo";             Ext = ".sfc,.smc,.zip,.7z" }
-    "sgb"             = @{ Name = "Super Game Boy";           Ext = ".gb,.gbc,.sgb,.zip,.7z" }
-    "pokemini"        = @{ Name = "Pokemon Mini";             Ext = ".min,.zip,.7z" }
-    "virtualboy"      = @{ Name = "Virtual Boy";              Ext = ".vb,.vboy,.zip,.7z" }
-    # -- Sony -------------------------------------------------------------------
-    "psx"             = @{ Name = "PlayStation";              Ext = ".cue,.bin,.iso,.img,.pbp,.chd,.m3u,.mds,.ccd" }
-    "ps2"             = @{ Name = "PlayStation 2";            Ext = ".iso,.bin,.chd,.cso,.gz,.zso" }
-    "ps3"             = @{ Name = "PlayStation 3";            Ext = ".ps3dir (folder),.pkg" }
-    "psp"             = @{ Name = "PlayStation Portable";     Ext = ".iso,.cso,.pbp,.chd" }
-    "psvita"          = @{ Name = "PlayStation Vita";         Ext = ".vpk,.mai" }
-    # -- Sega -------------------------------------------------------------------
-    "mastersystem"    = @{ Name = "Sega Master System";       Ext = ".sms,.bin,.zip,.7z" }
-    "megadrive"       = @{ Name = "Sega Genesis / Mega Drive";Ext = ".md,.smd,.gen,.bin,.zip,.7z" }
-    "sega32x"         = @{ Name = "Sega 32X";                Ext = ".32x,.smd,.bin,.zip,.7z" }
-    "segacd"          = @{ Name = "Sega CD / Mega CD";       Ext = ".cue,.bin,.iso,.chd" }
-    "saturn"          = @{ Name = "Sega Saturn";             Ext = ".cue,.bin,.iso,.chd,.mds,.ccd" }
-    "dreamcast"       = @{ Name = "Sega Dreamcast";          Ext = ".cdi,.gdi,.chd,.cue,.bin,.iso" }
-    "gamegear"        = @{ Name = "Sega Game Gear";          Ext = ".gg,.bin,.zip,.7z" }
-    "sg1000"          = @{ Name = "Sega SG-1000";            Ext = ".sg,.sc,.bin,.zip,.7z" }
-    "naomi"           = @{ Name = "Sega NAOMI";              Ext = ".zip,.7z,.dat,.bin,.lst" }
-    "naomi2"          = @{ Name = "Sega NAOMI 2";            Ext = ".zip,.7z,.dat,.bin,.lst" }
-    "atomiswave"      = @{ Name = "Sammy Atomiswave";        Ext = ".zip,.7z,.bin,.dat,.lst" }
-    # -- NEC --------------------------------------------------------------------
-    "pcengine"        = @{ Name = "PC Engine / TurboGrafx-16";Ext = ".pce,.cue,.bin,.iso,.chd,.zip,.7z" }
-    "pcenginecd"      = @{ Name = "PC Engine CD / TurboGrafx-CD"; Ext = ".cue,.bin,.iso,.chd" }
-    "pcfx"            = @{ Name = "PC-FX";                   Ext = ".cue,.bin,.iso,.chd" }
-    "supergrafx"      = @{ Name = "SuperGrafx";              Ext = ".pce,.sgx,.cue,.zip,.7z" }
-    # -- SNK --------------------------------------------------------------------
-    "neogeo"          = @{ Name = "Neo Geo (MVS/AES)";       Ext = ".zip,.7z" }
-    "neogeocd"        = @{ Name = "Neo Geo CD";              Ext = ".cue,.bin,.iso,.chd" }
-    "ngp"             = @{ Name = "Neo Geo Pocket";          Ext = ".ngp,.ngc,.zip,.7z" }
-    "ngpc"            = @{ Name = "Neo Geo Pocket Color";    Ext = ".ngc,.ngp,.zip,.7z" }
-    # -- Microsoft --------------------------------------------------------------
-    "xbox"            = @{ Name = "Microsoft Xbox";          Ext = ".iso,.xiso" }
-    "xbox360"         = @{ Name = "Microsoft Xbox 360";      Ext = ".xex,.iso,.god,.xbla" }
-    # -- Arcade -----------------------------------------------------------------
-    "mame"            = @{ Name = "MAME (Arcade)";           Ext = ".zip,.7z" }
-    "fbneo"           = @{ Name = "FinalBurn Neo";           Ext = ".zip,.7z" }
-    "cps"             = @{ Name = "Capcom Play System";      Ext = ".zip,.7z" }
-    "cps2"            = @{ Name = "Capcom Play System II";   Ext = ".zip,.7z" }
-    "cps3"            = @{ Name = "Capcom Play System III";  Ext = ".zip,.7z" }
-    "model2"          = @{ Name = "Sega Model 2";            Ext = ".zip,.7z" }
-    "model3"          = @{ Name = "Sega Model 3";            Ext = ".zip,.7z" }
-    "daphne"          = @{ Name = "Daphne (Laserdisc)";      Ext = ".daphne,.singe" }
-    # -- Computers --------------------------------------------------------------
-    "dos"             = @{ Name = "MS-DOS";                  Ext = ".exe,.com,.bat,.conf,.zip,.7z,.dosz" }
-    "scummvm"         = @{ Name = "ScummVM";                 Ext = ".scummvm,.svm" }
-    "amiga"           = @{ Name = "Commodore Amiga";         Ext = ".adf,.adz,.dms,.hdf,.hdz,.ipf,.lha,.zip,.7z" }
-    "amigacd32"       = @{ Name = "Amiga CD32";              Ext = ".cue,.bin,.iso,.chd,.lha" }
-    "amiga1200"       = @{ Name = "Amiga 1200 (AGA)";       Ext = ".adf,.adz,.dms,.hdf,.hdz,.ipf,.lha,.zip,.7z" }
-    "c64"             = @{ Name = "Commodore 64";            Ext = ".d64,.t64,.tap,.prg,.crt,.g64,.p00,.zip,.7z" }
-    "c128"            = @{ Name = "Commodore 128";           Ext = ".d64,.d81,.t64,.tap,.prg,.crt,.zip,.7z" }
-    "vic20"           = @{ Name = "Commodore VIC-20";        Ext = ".d64,.t64,.tap,.prg,.crt,.zip,.7z" }
-    "pet"             = @{ Name = "Commodore PET";           Ext = ".d64,.d80,.d82,.prg,.tap,.zip,.7z" }
-    "plus4"           = @{ Name = "Commodore Plus/4";        Ext = ".d64,.t64,.tap,.prg,.crt,.zip,.7z" }
-    "msx"             = @{ Name = "MSX";                     Ext = ".rom,.mx1,.mx2,.dsk,.cas,.zip,.7z" }
-    "msx2"            = @{ Name = "MSX2";                    Ext = ".rom,.mx2,.dsk,.cas,.zip,.7z" }
-    "msxturbor"       = @{ Name = "MSX turboR";             Ext = ".rom,.dsk,.cas,.zip,.7z" }
-    "zxspectrum"      = @{ Name = "ZX Spectrum";             Ext = ".tzx,.tap,.sna,.z80,.szx,.dsk,.zip,.7z" }
-    "zx81"            = @{ Name = "Sinclair ZX81";           Ext = ".p,.tzx,.o,.zip,.7z" }
-    "apple2"          = @{ Name = "Apple II";                Ext = ".dsk,.do,.po,.nib,.woz,.zip,.7z" }
-    "apple2gs"        = @{ Name = "Apple IIGS";              Ext = ".2mg,.po,.dsk,.woz,.zip,.7z" }
-    "ti99"            = @{ Name = "TI-99/4A";                Ext = ".rpk,.zip,.7z" }
-    "samcoupe"        = @{ Name = "SAM Coupe";               Ext = ".dsk,.mgt,.sbt,.cpm,.zip,.7z" }
-    "thomson"         = @{ Name = "Thomson MO/TO";           Ext = ".fd,.sap,.k7,.m5,.m7,.rom,.zip,.7z" }
-    "oricatmos"       = @{ Name = "Oric / Oric Atmos";       Ext = ".dsk,.tap,.zip,.7z" }
-    "pc88"            = @{ Name = "NEC PC-8801";             Ext = ".d88,.cmt,.t88,.zip,.7z" }
-    "pc98"            = @{ Name = "NEC PC-9801";             Ext = ".fdi,.hdi,.d88,.d98,.zip,.7z,.hdd" }
-    "x68000"          = @{ Name = "Sharp X68000";            Ext = ".dim,.hdf,.2hd,.xdf,.cmd,.m3u,.zip,.7z" }
-    "x1"              = @{ Name = "Sharp X1";                Ext = ".dx1,.2d,.2hd,.tap,.cmd,.zip,.7z" }
-    "fmtowns"         = @{ Name = "Fujitsu FM Towns";        Ext = ".cue,.bin,.iso,.chd,.ccd" }
-    "spectravideo"    = @{ Name = "SpectraVideo SVI-3x8";    Ext = ".rom,.dsk,.cas,.zip,.7z" }
-    "bbc"             = @{ Name = "BBC Micro";               Ext = ".ssd,.dsd,.uef,.zip,.7z" }
-    "dragon"          = @{ Name = "Dragon 32/64";            Ext = ".cas,.wav,.bas,.rom,.ccc,.dmk,.jvc,.os9,.vdk,.zip,.7z" }
-    "coco"            = @{ Name = "TRS-80 Color Computer";   Ext = ".cas,.wav,.bas,.rom,.ccc,.dmk,.jvc,.os9,.vdk,.dsk,.zip,.7z" }
-    "trs80"           = @{ Name = "TRS-80";                  Ext = ".dsk,.cas,.cmd,.zip,.7z" }
-    # -- Misc Consoles ----------------------------------------------------------
-    "3do"             = @{ Name = "3DO Interactive Multiplayer"; Ext = ".iso,.cue,.bin,.chd" }
-    "colecovision"    = @{ Name = "ColecoVision";            Ext = ".col,.rom,.bin,.zip,.7z" }
-    "intellivision"   = @{ Name = "Intellivision";           Ext = ".int,.bin,.rom,.zip,.7z" }
-    "vectrex"         = @{ Name = "Vectrex";                 Ext = ".vec,.bin,.gam,.zip,.7z" }
-    "odyssey2"        = @{ Name = "Magnavox Odyssey 2";      Ext = ".bin,.zip,.7z" }
-    "channelf"        = @{ Name = "Fairchild Channel F";     Ext = ".bin,.chf,.zip,.7z" }
-    "supervision"     = @{ Name = "Watara Supervision";      Ext = ".sv,.bin,.zip,.7z" }
-    "wonderswan"      = @{ Name = "WonderSwan";              Ext = ".ws,.zip,.7z" }
-    "wonderswancolor" = @{ Name = "WonderSwan Color";        Ext = ".wsc,.ws,.zip,.7z" }
-    "uzebox"          = @{ Name = "Uzebox";                  Ext = ".uze,.zip,.7z" }
-    "videopac"        = @{ Name = "Videopac+ G7400";         Ext = ".bin,.zip,.7z" }
-    "cdimono1"        = @{ Name = "Philips CD-i";            Ext = ".cue,.bin,.iso,.chd" }
-    "pico8"           = @{ Name = "PICO-8";                  Ext = ".p8,.png" }
-    "tic80"           = @{ Name = "TIC-80";                  Ext = ".tic" }
-    "lutro"           = @{ Name = "Lutro (LOVE for RetroArch)"; Ext = ".lutro,.love" }
-    "cavestory"       = @{ Name = "Cave Story (NXEngine)";   Ext = ".exe" }
-    "easyrpg"         = @{ Name = "EasyRPG (RPG Maker 2000/2003)"; Ext = ".easyrpg,.ldb" }
-    "openbor"         = @{ Name = "OpenBOR";                 Ext = ".pak" }
-    "solarus"         = @{ Name = "Solarus";                 Ext = ".solarus" }
-    "ports"           = @{ Name = "Ports";                   Ext = ".sh,.bat,.exe" }
-    # -- Handheld ---------------------------------------------------------------
-    "wswan"           = @{ Name = "Bandai WonderSwan";       Ext = ".ws,.zip,.7z" }
-    "wswanc"          = @{ Name = "Bandai WonderSwan Color"; Ext = ".wsc,.ws,.zip,.7z" }
-    "gw"              = @{ Name = "Game and Watch";          Ext = ".mgw,.zip,.7z" }
-    "arduboy"         = @{ Name = "Arduboy";                 Ext = ".hex,.arduboy,.zip" }
-    "gamate"          = @{ Name = "Bit Corp Gamate";         Ext = ".bin,.zip,.7z" }
-    "megaduck"        = @{ Name = "Mega Duck";               Ext = ".bin,.zip,.7z" }
-    "gmaster"         = @{ Name = "Hartung Game Master";     Ext = ".bin,.zip,.7z" }
-}
+#  ES-DE has its own system folder names defined in its bundled es_systems.xml
+#  (e.g. "gc" for GameCube, "gameandwatch" for Game & Watch, etc.) which differ
+#  from Batocera naming. Rather than maintain a hand-coded list that drifts out
+#  of sync, this script creates an empty ROMs\ directory and lets ES-DE
+#  generate the correct subdirectories on first launch via its built-in
+#  "Generate directory structure" button in the startup dialog.
+# ==============================================================================
 
 # ==============================================================================
 #  RETROARCH CORES -- mapped to systems
@@ -764,18 +640,12 @@ Ensure-Dir $Paths.RetroArch
 Ensure-Dir $Paths.RACores
 Ensure-Dir $Paths.RASystem
 
-# ROM directories -- these go in ROMs/ which ES-DE reads by default in portable mode
-foreach ($sys in $Systems.Keys) {
-    Ensure-Dir "$($Paths.ROMs)\$sys"
-}
-
 # BIOS subdirectories inside RetroArch\system\
 foreach ($sub in @("dc","np2kai","keropi","fmtowns","Machines","Databases")) {
     Ensure-Dir "$($Paths.RASystem)\$sub"
 }
 
-$sysCount = $Systems.Count
-Write-OK "Created $sysCount ROM directories in ROMs\ and BIOS structure in Emulators\RetroArch\system\"
+Write-OK "Created directory structure and BIOS subdirectories"
 
 # -- 2. Generate BIOS guide ----------------------------------------------------
 Write-Step "Writing BIOS reference guide..."
@@ -783,24 +653,6 @@ $BIOSGuide | Out-File -FilePath "$($Paths.RASystem)\BIOS_README.txt" -Encoding A
 # Also put a copy at the base for visibility
 $BIOSGuide | Out-File -FilePath "$BasePath\BIOS_README.txt" -Encoding ASCII -Force
 Write-OK "BIOS guide written to BIOS_README.txt"
-
-# -- 3. Generate ROM directory info files --------------------------------------
-Write-Step "Writing ROM directory info files..."
-foreach ($sys in $Systems.Keys) {
-    $info = $Systems[$sys]
-    $sysName = $info.Name
-    $sysExt = $info.Ext
-    $readme = @"
-System: $sysName
-Folder: $sys
-Supported extensions: $sysExt
-
-Place your legally obtained ROM/disc images in this folder.
-"@
-    $readmePath = "$($Paths.ROMs)\$sys\_info.txt"
-    $readme | Out-File -FilePath $readmePath -Encoding ASCII -Force
-}
-Write-OK "ROM info files created for $sysCount systems"
 
 # -- If SkipDownloads, stop here -----------------------------------------------
 if ($SkipDownloads) {
@@ -1050,11 +902,16 @@ $guideText = @"
    1. Run ES-DE.exe
    2. ES-DE will auto-detect ROMs\ as the ROM directory (portable default)
    3. ES-DE will auto-find emulators in Emulators\ via es_find_rules.xml
-   4. No manual path configuration should be needed!
+   4. Click "Generate directory structure" when prompted to create all
+      system ROM folders (e.g. gc\, snes\, psx\, n64\, etc.)
+   5. No additional path configuration should be needed!
 
  ADDING GAMES:
    Drop your legally obtained ROM files into the matching ROMs\ subfolder.
-   For example: ROMs\nes\, ROMs\snes\, ROMs\psx\, etc.
+   IMPORTANT: Use ES-DE folder names, NOT Batocera names! For example:
+     ROMs\gc\        (NOT ROMs\gamecube\)
+     ROMs\n3ds\      (NOT ROMs\3ds\)
+     ROMs\genesis\   (for Sega Genesis)
 
  BIOS FILES:
    See BIOS_README.txt for the full list with MD5 checksums.
@@ -1103,7 +960,7 @@ Write-Host "================================================================" -F
 Write-Host ""
 Write-Host "  $BasePath" -ForegroundColor White
 Write-Host "    |-- ES-DE.exe             <- Launch this!" -ForegroundColor White
-Write-Host "    |-- ROMs\                 <- $sysCount system folders" -ForegroundColor White
+Write-Host "    |-- ROMs\                 <- ES-DE generates system folders on first launch" -ForegroundColor White
 Write-Host "    |   |-- nes\" -ForegroundColor Gray
 Write-Host "    |   |-- snes\" -ForegroundColor Gray
 Write-Host "    |   |-- psx\" -ForegroundColor Gray
@@ -1123,13 +980,13 @@ Write-Host "    |-- QUICK_START.txt       <- Setup guide" -ForegroundColor White
 Write-Host "    \-- Launch_ES-DE.bat      <- Quick launcher" -ForegroundColor White
 Write-Host ""
 Write-Host "  NEXT STEPS:" -ForegroundColor Yellow
-Write-Host "    1. Add BIOS files to Emulators\RetroArch\system\ (see BIOS_README.txt)" -ForegroundColor White
-Write-Host "    2. Add your ROM files to the matching ROMs\ subfolders" -ForegroundColor White
-Write-Host "    3. Run ES-DE.exe (or Launch_ES-DE.bat)" -ForegroundColor White
-Write-Host "    4. ES-DE auto-detects ROMs and emulators -- no config needed!" -ForegroundColor White
-Write-Host "    5. Optionally scrape for artwork at screenscraper.fr" -ForegroundColor White
+Write-Host "    1. Run ES-DE.exe (or Launch_ES-DE.bat)" -ForegroundColor White
+Write-Host "    2. Click 'Generate directory structure' to create ROM folders" -ForegroundColor White
+Write-Host "    3. Add BIOS files to Emulators\RetroArch\system\ (see BIOS_README.txt)" -ForegroundColor White
+Write-Host "    4. Add your ROM files to the matching ROMs\ subfolders" -ForegroundColor White
+Write-Host "    5. Note: ES-DE uses its own folder names (e.g. gc, not gamecube)" -ForegroundColor White
+Write-Host "    6. Optionally scrape for artwork at screenscraper.fr" -ForegroundColor White
 Write-Host ""
-Write-Host "  Total systems: $sysCount" -ForegroundColor Cyan
 Write-Host "  RetroArch cores: $coreTotal" -ForegroundColor Cyan
 if ($emuTotal -gt 0) {
     Write-Host "  Standalone emulators: $emuTotal" -ForegroundColor Cyan
