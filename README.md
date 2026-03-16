@@ -71,7 +71,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ## Directory Layout
 
-The install root **is** the ES-DE portable root. ES-DE auto-detects `ROMs\` and `Emulators\` with zero configuration needed on first launch.
+The install root **is** the ES-DE portable root. ES-DE auto-detects `Emulators\` on first launch. For `ROMs\`, click **"Generate directory structure"** in the first-launch dialog to create all system subfolders with the correct ES-DE names.
 
 ```
 C:\EmulationStation\

@@ -9,7 +9,7 @@
       1. Download and extract ES-DE portable for Windows
       2. Create ROMs/ and Emulators/ directories where ES-DE expects them
       3. Download RetroArch portable with ~80 libretro cores
-      4. Download 15 standalone emulators into Emulators/
+      4. Download 16 standalone emulators into Emulators/
       5. Generate a BIOS reference guide with MD5 checksums
       6. Generate a quick-start configuration guide
 
@@ -19,7 +19,7 @@
       BasePath/Emulators/RetroArch/
       BasePath/Emulators/<standalone>/
 
-    Run as Administrator for best results (7-Zip install, NTFS junctions).
+    Run as Administrator for best results (some downloads may need it).
     Requires an active internet connection.
 
 .PARAMETER BasePath
@@ -974,7 +974,7 @@ Write-Host "    |   |-- PCSX2\            <- PlayStation 2" -ForegroundColor Gra
 Write-Host "    |   |-- RPCS3\            <- PlayStation 3" -ForegroundColor Gray
 Write-Host "    |   |-- duckstation\      <- PlayStation 1" -ForegroundColor Gray
 Write-Host "    |   |-- PPSSPP\           <- PSP" -ForegroundColor Gray
-Write-Host "    |   \-- ... (15 standalone emulators)" -ForegroundColor Gray
+Write-Host "    |   \-- ... (16 standalone emulators)" -ForegroundColor Gray
 Write-Host "    |-- BIOS_README.txt       <- BIOS reference with MD5s" -ForegroundColor White
 Write-Host "    |-- QUICK_START.txt       <- Setup guide" -ForegroundColor White
 Write-Host "    \-- Launch_ES-DE.bat      <- Quick launcher" -ForegroundColor White
