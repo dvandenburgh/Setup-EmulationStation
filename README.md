@@ -11,7 +11,7 @@ One command gives you the frontend, RetroArch with ~80 libretro cores, 15 standa
 | Step | Description |
 |------|-------------|
 | **Directory tree** | Creates the full folder structure — ROMs, BIOS, saves, states, config — with per-system subfolders and `_info.txt` files listing supported extensions. |
-| **ES-DE** | Downloads the latest ES-DE release from GitHub. |
+| **ES-DE** | Downloads the latest ES-DE release from GitLab (where ES-DE is hosted). |
 | **RetroArch** | Downloads RetroArch portable from the libretro buildbot, then pulls ~80 cores from the nightly channel covering every system from Atari 2600 to Sharp X68000. |
 | **Standalone emulators** | Downloads the latest GitHub release for Dolphin, PCSX2, RPCS3, DuckStation, PPSSPP, Cemu, Xemu, Xenia, melonDS, mGBA, Flycast, Vita3K, MAME, DOSBox Staging, and ScummVM. |
 | **BIOS guide** | Generates `bios/BIOS_README.txt` listing every required and optional firmware file with MD5 hashes, organised by system. |
@@ -60,7 +60,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ```powershell
 # Install to a different drive
-.\Setup-EmulationStation.ps1 -BasePath "D:\EmulationStation"
+.\Setup-EmulationStation.ps1 -BasePath "D:\Emulation"
 
 # Scaffold the folder structure first, download later
 .\Setup-EmulationStation.ps1 -SkipDownloads
@@ -225,7 +225,6 @@ The script is safe to re-run. Already-downloaded archives in `.downloads\` are d
 
 - **7-Zip** is auto-installed if needed (some emulators ship as `.7z`).
 - **GitHub API rate limits** apply (~60 unauthenticated requests/hour). If you hit limits mid-run, wait a few minutes and re-run — completed downloads are skipped.
-- **Nintendo Switch emulation** (Yuzu/Suyu) is not included due to the current legal landscape. ROM directories are created but no emulator is downloaded.
 - Some RetroArch cores from the nightly buildbot may fail to download — this is expected for cores not yet built for the latest nightly. RetroArch will still function with the cores that succeed.
 
 ## License
