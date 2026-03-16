@@ -7,8 +7,8 @@
 .DESCRIPTION
     This script will:
       1. Create a complete directory structure (emulators, ROMs, BIOS, saves, config)
-      2. Download & extract ES-DE (EmulationStation Desktop Edition)
-      3. Download & extract RetroArch (portable) with all relevant libretro cores
+      2. Download and extract ES-DE (EmulationStation Desktop Edition)
+      3. Download and extract RetroArch (portable) with all relevant libretro cores
       4. Download standalone emulators for systems that need them
       5. Generate a BIOS guide with every required/optional BIOS file listed
       6. Generate an ES-DE systems configuration
@@ -27,9 +27,9 @@
 
 .NOTES
     Author  : Claude (Anthropic) + David
-    Version : 1.0.0
-    Date    : 2026-03-15
-    License : MIT — use at your own risk
+    Version : 1.0.1
+    Date    : 2026-03-16
+    License : MIT -- use at your own risk
 #>
 
 [CmdletBinding()]
@@ -39,19 +39,19 @@ param(
     [switch]$RetroArchOnly
 )
 
-# ── Strict mode ──────────────────────────────────────────────────────────────
+# -- Strict mode ---------------------------------------------------------------
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'   # speeds up Invoke-WebRequest dramatically
 
-# ── Colour helpers ───────────────────────────────────────────────────────────
-function Write-Step  { param([string]$Msg) Write-Host "`n▸ $Msg" -ForegroundColor Cyan }
-function Write-OK    { param([string]$Msg) Write-Host "  ✓ $Msg" -ForegroundColor Green }
-function Write-Skip  { param([string]$Msg) Write-Host "  ⏭ $Msg" -ForegroundColor Yellow }
-function Write-Err   { param([string]$Msg) Write-Host "  ✗ $Msg" -ForegroundColor Red }
-function Write-Info  { param([string]$Msg) Write-Host "  ℹ $Msg" -ForegroundColor Gray }
+# -- Colour helpers ------------------------------------------------------------
+function Write-Step  { param([string]$Msg) Write-Host "`n>> $Msg" -ForegroundColor Cyan }
+function Write-OK    { param([string]$Msg) Write-Host "  [OK] $Msg" -ForegroundColor Green }
+function Write-Skip  { param([string]$Msg) Write-Host "  [SKIP] $Msg" -ForegroundColor Yellow }
+function Write-Err   { param([string]$Msg) Write-Host "  [FAIL] $Msg" -ForegroundColor Red }
+function Write-Info  { param([string]$Msg) Write-Host "  [INFO] $Msg" -ForegroundColor Gray }
 
-# ── Global paths ─────────────────────────────────────────────────────────────
+# -- Global paths --------------------------------------------------------------
 $Paths = @{
     Base       = $BasePath
     Emulators  = "$BasePath\emulators"
@@ -64,15 +64,15 @@ $Paths = @{
     ESDE       = "$BasePath\emulators\ES-DE"
     RetroArch  = "$BasePath\emulators\RetroArch"
     RACores    = "$BasePath\emulators\RetroArch\cores"
-    RASystem   = "$BasePath\emulators\RetroArch\system"   # RetroArch BIOS path
+    RASystem   = "$BasePath\emulators\RetroArch\system"
 }
 
-# ── TLS 1.2 for GitHub ──────────────────────────────────────────────────────
+# -- TLS 1.2 for GitHub -------------------------------------------------------
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 #  HELPER FUNCTIONS
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 function Ensure-Dir {
     param([string]$Path)
@@ -157,7 +157,7 @@ function Extract-Archive {
             Expand-Archive -Path $Archive -DestinationPath $Destination -Force
         }
         elseif ($Archive -match '\.(7z|tar\.gz|tar\.xz)$') {
-            # Requires 7-Zip — we'll install it if missing
+            # Requires 7-Zip -- we will install it if missing
             $7z = Get-7ZipPath
             if (-not $7z) {
                 Write-Err "7-Zip required but not found for $Description"
@@ -190,8 +190,6 @@ function Get-7ZipPath {
     try {
         $7zDir = "$($Paths.Emulators)\7zip"
         Ensure-Dir $7zDir
-        $7zUrl = "https://github.com/ip7z/7zip/releases/download/24.09/7z2409-extra.7z"
-        # We need 7z to extract 7z — fallback to the .exe installer approach
         $7zInstallerUrl = "https://github.com/ip7z/7zip/releases/download/24.09/7z2409-x64.exe"
         $7zInstaller = "$($Paths.Downloads)\7z-setup.exe"
         Invoke-WebRequest -Uri $7zInstallerUrl -OutFile $7zInstaller -UseBasicParsing
@@ -207,14 +205,14 @@ function Get-7ZipPath {
     return $null
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 #  SYSTEM / ROM DIRECTORY DEFINITIONS
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 #  Every system Batocera supports on x86_64 with its ROM folder name,
 #  friendly display name, and supported file extensions.
 
 $Systems = [ordered]@{
-    # ── Atari ────────────────────────────────────────────────────────────────
+    # -- Atari ------------------------------------------------------------------
     "atari2600"       = @{ Name = "Atari 2600";              Ext = ".a26,.bin,.rom,.zip,.7z" }
     "atari5200"       = @{ Name = "Atari 5200";              Ext = ".a52,.bin,.rom,.zip,.7z" }
     "atari7800"       = @{ Name = "Atari 7800";              Ext = ".a78,.bin,.rom,.zip,.7z" }
@@ -222,7 +220,7 @@ $Systems = [ordered]@{
     "atarilynx"       = @{ Name = "Atari Lynx";              Ext = ".lnx,.zip,.7z" }
     "atarist"         = @{ Name = "Atari ST/STE/TT/Falcon";  Ext = ".st,.stx,.msa,.dim,.ipf,.zip,.7z" }
     "atarixe"         = @{ Name = "Atari 800/XL/XE";         Ext = ".xex,.atr,.atx,.bin,.rom,.zip,.7z" }
-    # ── Nintendo ─────────────────────────────────────────────────────────────
+    # -- Nintendo ---------------------------------------------------------------
     "nes"             = @{ Name = "Nintendo Entertainment System"; Ext = ".nes,.unf,.unif,.fds,.zip,.7z" }
     "snes"            = @{ Name = "Super Nintendo";           Ext = ".sfc,.smc,.fig,.swc,.zip,.7z" }
     "n64"             = @{ Name = "Nintendo 64";              Ext = ".n64,.v64,.z64,.ndd,.zip,.7z" }
@@ -239,15 +237,15 @@ $Systems = [ordered]@{
     "satellaview"     = @{ Name = "Satellaview";              Ext = ".bs,.sfc,.smc,.zip,.7z" }
     "sufami"          = @{ Name = "SuFami Turbo";             Ext = ".sfc,.smc,.zip,.7z" }
     "sgb"             = @{ Name = "Super Game Boy";           Ext = ".gb,.gbc,.sgb,.zip,.7z" }
-    "pokemini"        = @{ Name = "Pokémon Mini";             Ext = ".min,.zip,.7z" }
+    "pokemini"        = @{ Name = "Pokemon Mini";             Ext = ".min,.zip,.7z" }
     "virtualboy"      = @{ Name = "Virtual Boy";              Ext = ".vb,.vboy,.zip,.7z" }
-    # ── Sony ─────────────────────────────────────────────────────────────────
+    # -- Sony -------------------------------------------------------------------
     "psx"             = @{ Name = "PlayStation";              Ext = ".cue,.bin,.iso,.img,.pbp,.chd,.m3u,.mds,.ccd" }
     "ps2"             = @{ Name = "PlayStation 2";            Ext = ".iso,.bin,.chd,.cso,.gz,.zso" }
     "ps3"             = @{ Name = "PlayStation 3";            Ext = ".ps3dir (folder),.pkg" }
     "psp"             = @{ Name = "PlayStation Portable";     Ext = ".iso,.cso,.pbp,.chd" }
     "psvita"          = @{ Name = "PlayStation Vita";         Ext = ".vpk,.mai" }
-    # ── Sega ─────────────────────────────────────────────────────────────────
+    # -- Sega -------------------------------------------------------------------
     "mastersystem"    = @{ Name = "Sega Master System";       Ext = ".sms,.bin,.zip,.7z" }
     "megadrive"       = @{ Name = "Sega Genesis / Mega Drive";Ext = ".md,.smd,.gen,.bin,.zip,.7z" }
     "sega32x"         = @{ Name = "Sega 32X";                Ext = ".32x,.smd,.bin,.zip,.7z" }
@@ -259,20 +257,20 @@ $Systems = [ordered]@{
     "naomi"           = @{ Name = "Sega NAOMI";              Ext = ".zip,.7z,.dat,.bin,.lst" }
     "naomi2"          = @{ Name = "Sega NAOMI 2";            Ext = ".zip,.7z,.dat,.bin,.lst" }
     "atomiswave"      = @{ Name = "Sammy Atomiswave";        Ext = ".zip,.7z,.bin,.dat,.lst" }
-    # ── NEC ──────────────────────────────────────────────────────────────────
+    # -- NEC --------------------------------------------------------------------
     "pcengine"        = @{ Name = "PC Engine / TurboGrafx-16";Ext = ".pce,.cue,.bin,.iso,.chd,.zip,.7z" }
     "pcenginecd"      = @{ Name = "PC Engine CD / TurboGrafx-CD"; Ext = ".cue,.bin,.iso,.chd" }
     "pcfx"            = @{ Name = "PC-FX";                   Ext = ".cue,.bin,.iso,.chd" }
     "supergrafx"      = @{ Name = "SuperGrafx";              Ext = ".pce,.sgx,.cue,.zip,.7z" }
-    # ── SNK ──────────────────────────────────────────────────────────────────
+    # -- SNK --------------------------------------------------------------------
     "neogeo"          = @{ Name = "Neo Geo (MVS/AES)";       Ext = ".zip,.7z" }
     "neogeocd"        = @{ Name = "Neo Geo CD";              Ext = ".cue,.bin,.iso,.chd" }
     "ngp"             = @{ Name = "Neo Geo Pocket";          Ext = ".ngp,.ngc,.zip,.7z" }
     "ngpc"            = @{ Name = "Neo Geo Pocket Color";    Ext = ".ngc,.ngp,.zip,.7z" }
-    # ── Microsoft ────────────────────────────────────────────────────────────
+    # -- Microsoft --------------------------------------------------------------
     "xbox"            = @{ Name = "Microsoft Xbox";          Ext = ".iso,.xiso" }
     "xbox360"         = @{ Name = "Microsoft Xbox 360";      Ext = ".xex,.iso,.god,.xbla" }
-    # ── Arcade ───────────────────────────────────────────────────────────────
+    # -- Arcade -----------------------------------------------------------------
     "mame"            = @{ Name = "MAME (Arcade)";           Ext = ".zip,.7z" }
     "fbneo"           = @{ Name = "FinalBurn Neo";           Ext = ".zip,.7z" }
     "cps"             = @{ Name = "Capcom Play System";      Ext = ".zip,.7z" }
@@ -281,7 +279,7 @@ $Systems = [ordered]@{
     "model2"          = @{ Name = "Sega Model 2";            Ext = ".zip,.7z" }
     "model3"          = @{ Name = "Sega Model 3";            Ext = ".zip,.7z" }
     "daphne"          = @{ Name = "Daphne (Laserdisc)";      Ext = ".daphne,.singe" }
-    # ── Computers ────────────────────────────────────────────────────────────
+    # -- Computers --------------------------------------------------------------
     "dos"             = @{ Name = "MS-DOS";                  Ext = ".exe,.com,.bat,.conf,.zip,.7z,.dosz" }
     "scummvm"         = @{ Name = "ScummVM";                 Ext = ".scummvm,.svm" }
     "amiga"           = @{ Name = "Commodore Amiga";         Ext = ".adf,.adz,.dms,.hdf,.hdz,.ipf,.lha,.zip,.7z" }
@@ -300,7 +298,7 @@ $Systems = [ordered]@{
     "apple2"          = @{ Name = "Apple II";                Ext = ".dsk,.do,.po,.nib,.woz,.zip,.7z" }
     "apple2gs"        = @{ Name = "Apple IIGS";              Ext = ".2mg,.po,.dsk,.woz,.zip,.7z" }
     "ti99"            = @{ Name = "TI-99/4A";                Ext = ".rpk,.zip,.7z" }
-    "samcoupe"        = @{ Name = "SAM Coupé";               Ext = ".dsk,.mgt,.sbt,.cpm,.zip,.7z" }
+    "samcoupe"        = @{ Name = "SAM Coupe";               Ext = ".dsk,.mgt,.sbt,.cpm,.zip,.7z" }
     "thomson"         = @{ Name = "Thomson MO/TO";           Ext = ".fd,.sap,.k7,.m5,.m7,.rom,.zip,.7z" }
     "oricatmos"       = @{ Name = "Oric / Oric Atmos";       Ext = ".dsk,.tap,.zip,.7z" }
     "pc88"            = @{ Name = "NEC PC-8801";             Ext = ".d88,.cmt,.t88,.zip,.7z" }
@@ -313,12 +311,12 @@ $Systems = [ordered]@{
     "dragon"          = @{ Name = "Dragon 32/64";            Ext = ".cas,.wav,.bas,.rom,.ccc,.dmk,.jvc,.os9,.vdk,.zip,.7z" }
     "coco"            = @{ Name = "TRS-80 Color Computer";   Ext = ".cas,.wav,.bas,.rom,.ccc,.dmk,.jvc,.os9,.vdk,.dsk,.zip,.7z" }
     "trs80"           = @{ Name = "TRS-80";                  Ext = ".dsk,.cas,.cmd,.zip,.7z" }
-    # ── Misc Consoles ────────────────────────────────────────────────────────
+    # -- Misc Consoles ----------------------------------------------------------
     "3do"             = @{ Name = "3DO Interactive Multiplayer"; Ext = ".iso,.cue,.bin,.chd" }
     "colecovision"    = @{ Name = "ColecoVision";            Ext = ".col,.rom,.bin,.zip,.7z" }
     "intellivision"   = @{ Name = "Intellivision";           Ext = ".int,.bin,.rom,.zip,.7z" }
     "vectrex"         = @{ Name = "Vectrex";                 Ext = ".vec,.bin,.gam,.zip,.7z" }
-    "odyssey2"        = @{ Name = "Magnavox Odyssey²";       Ext = ".bin,.zip,.7z" }
+    "odyssey2"        = @{ Name = "Magnavox Odyssey 2";      Ext = ".bin,.zip,.7z" }
     "channelf"        = @{ Name = "Fairchild Channel F";     Ext = ".bin,.chf,.zip,.7z" }
     "supervision"     = @{ Name = "Watara Supervision";      Ext = ".sv,.bin,.zip,.7z" }
     "wonderswan"      = @{ Name = "WonderSwan";              Ext = ".ws,.zip,.7z" }
@@ -328,30 +326,30 @@ $Systems = [ordered]@{
     "cdimono1"        = @{ Name = "Philips CD-i";            Ext = ".cue,.bin,.iso,.chd" }
     "pico8"           = @{ Name = "PICO-8";                  Ext = ".p8,.png" }
     "tic80"           = @{ Name = "TIC-80";                  Ext = ".tic" }
-    "lutro"           = @{ Name = "Lutro (LÖVE for RetroArch)"; Ext = ".lutro,.love" }
+    "lutro"           = @{ Name = "Lutro (LOVE for RetroArch)"; Ext = ".lutro,.love" }
     "cavestory"       = @{ Name = "Cave Story (NXEngine)";   Ext = ".exe" }
     "easyrpg"         = @{ Name = "EasyRPG (RPG Maker 2000/2003)"; Ext = ".easyrpg,.ldb" }
     "openbor"         = @{ Name = "OpenBOR";                 Ext = ".pak" }
     "solarus"         = @{ Name = "Solarus";                 Ext = ".solarus" }
     "ports"           = @{ Name = "Ports";                   Ext = ".sh,.bat,.exe" }
-    # ── Handheld ─────────────────────────────────────────────────────────────
+    # -- Handheld ---------------------------------------------------------------
     "wswan"           = @{ Name = "Bandai WonderSwan";       Ext = ".ws,.zip,.7z" }
     "wswanc"          = @{ Name = "Bandai WonderSwan Color"; Ext = ".wsc,.ws,.zip,.7z" }
-    "gw"              = @{ Name = "Game & Watch";            Ext = ".mgw,.zip,.7z" }
+    "gw"              = @{ Name = "Game and Watch";          Ext = ".mgw,.zip,.7z" }
     "arduboy"         = @{ Name = "Arduboy";                 Ext = ".hex,.arduboy,.zip" }
     "gamate"          = @{ Name = "Bit Corp Gamate";         Ext = ".bin,.zip,.7z" }
     "megaduck"        = @{ Name = "Mega Duck";               Ext = ".bin,.zip,.7z" }
     "gmaster"         = @{ Name = "Hartung Game Master";     Ext = ".bin,.zip,.7z" }
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  RETROARCH CORES — mapped to systems
-# ══════════════════════════════════════════════════════════════════════════════
-#  Core DLL name → array of system folder(s) it serves
+# ==============================================================================
+#  RETROARCH CORES -- mapped to systems
+# ==============================================================================
+#  Core DLL name -> array of system folder(s) it serves
 #  These will be downloaded from the Buildbot.
 
 $RetroArchCores = [ordered]@{
-    # ── Nintendo ─────────────────────────────────────────────────────────────
+    # -- Nintendo ---------------------------------------------------------------
     "fceumm"                 = @("nes","fds")
     "mesen"                  = @("nes","fds")
     "nestopia"               = @("nes","fds")
@@ -366,14 +364,13 @@ $RetroArchCores = [ordered]@{
     "citra"                  = @("n3ds")
     "dolphin"                = @("gamecube","wii")
     "pokemini"               = @("pokemini")
-    "virtualjaguar"          = @("virtualboy")  # Note: VJ is for Jaguar; VB uses mednafen_vb
     "mednafen_vb"            = @("virtualboy")
-    # ── Sony ─────────────────────────────────────────────────────────────────
+    # -- Sony -------------------------------------------------------------------
     "swanstation"            = @("psx")
     "pcsx_rearmed"           = @("psx")
     "mednafen_psx_hw"        = @("psx")
     "ppsspp"                 = @("psp")
-    # ── Sega ─────────────────────────────────────────────────────────────────
+    # -- Sega -------------------------------------------------------------------
     "genesis_plus_gx"        = @("mastersystem","megadrive","segacd","gamegear","sg1000")
     "genesis_plus_gx_wide"   = @("mastersystem","megadrive","segacd","gamegear","sg1000")
     "picodrive"              = @("mastersystem","megadrive","sega32x","segacd")
@@ -381,14 +378,14 @@ $RetroArchCores = [ordered]@{
     "kronos"                 = @("saturn")
     "mednafen_saturn"        = @("saturn")
     "yabasanshiro"           = @("saturn")
-    # ── NEC ──────────────────────────────────────────────────────────────────
+    # -- NEC --------------------------------------------------------------------
     "mednafen_pce"           = @("pcengine","pcenginecd","supergrafx")
     "mednafen_pce_fast"      = @("pcengine","pcenginecd","supergrafx")
     "mednafen_pcfx"          = @("pcfx")
-    # ── SNK ──────────────────────────────────────────────────────────────────
+    # -- SNK --------------------------------------------------------------------
     "fbneo"                  = @("neogeo","neogeocd","fbneo","cps","cps2","cps3")
     "mednafen_ngp"           = @("ngp","ngpc")
-    # ── Atari ────────────────────────────────────────────────────────────────
+    # -- Atari ------------------------------------------------------------------
     "stella"                 = @("atari2600")
     "stella2014"             = @("atari2600")
     "atari800"               = @("atari5200","atarixe")
@@ -397,12 +394,12 @@ $RetroArchCores = [ordered]@{
     "handy"                  = @("atarilynx")
     "mednafen_lynx"          = @("atarilynx")
     "hatari"                 = @("atarist")
-    # ── Arcade ───────────────────────────────────────────────────────────────
+    # -- Arcade -----------------------------------------------------------------
     "mame"                   = @("mame")
     "mame2003_plus"          = @("mame")
     "mame2010"               = @("mame")
     "daphne"                 = @("daphne")
-    # ── Computers ────────────────────────────────────────────────────────────
+    # -- Computers --------------------------------------------------------------
     "dosbox_pure"            = @("dos")
     "dosbox_svn"             = @("dos")
     "scummvm"                = @("scummvm")
@@ -428,7 +425,7 @@ $RetroArchCores = [ordered]@{
     "nxengine"               = @("cavestory")
     "lutro"                  = @("lutro")
     "easyrpg"                = @("easyrpg")
-    # ── Misc Consoles ────────────────────────────────────────────────────────
+    # -- Misc Consoles ----------------------------------------------------------
     "opera"                  = @("3do")
     "vecx"                   = @("vectrex")
     "freeintv"               = @("intellivision")
@@ -437,16 +434,16 @@ $RetroArchCores = [ordered]@{
     "arduous"                = @("arduboy")
     "bk"                     = @("coco")
     "mesen-s"                = @("snes","gb","gbc")
-    # ── Additional Japanese/obscure ──────────────────────────────────────────
+    # -- Additional Japanese/obscure --------------------------------------------
     "nekop2"                 = @("pc98")
     "cap32"                  = @()  # Amstrad CPC (not in our systems but core exists)
     "crocods"                = @()  # Amstrad CPC
     "fmtowns"               = @("fmtowns")
 }
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  STANDALONE EMULATORS — downloaded from GitHub where possible
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+#  STANDALONE EMULATORS -- downloaded from GitHub where possible
+# ==============================================================================
 
 $StandaloneEmulators = @(
     @{
@@ -455,7 +452,7 @@ $StandaloneEmulators = @(
         Repo      = "dolphin-emu/dolphin"
         Pattern   = "Dolphin.*x64.*\.7z$"
         Systems   = @("gamecube","wii")
-        Notes     = "GameCube & Wii emulator"
+        Notes     = "GameCube and Wii emulator"
     },
     @{
         Name      = "PCSX2"
@@ -471,7 +468,7 @@ $StandaloneEmulators = @(
         Repo      = "RPCS3/rpcs3-binaries-win"
         Pattern   = "rpcs3.*win64.*\.7z$"
         Systems   = @("ps3")
-        Notes     = "PlayStation 3 emulator — requires PS3 firmware (PS3UPDAT.PUP)"
+        Notes     = "PlayStation 3 emulator -- requires PS3 firmware (PS3UPDAT.PUP)"
     },
     @{
         Name      = "DuckStation"
@@ -503,7 +500,7 @@ $StandaloneEmulators = @(
         Repo      = "xemu-project/xemu"
         Pattern   = "xemu.*win.*\.zip$"
         Systems   = @("xbox")
-        Notes     = "Original Xbox emulator — requires MCPX boot ROM + flash BIOS"
+        Notes     = "Original Xbox emulator -- requires MCPX boot ROM + flash BIOS"
     },
     @{
         Name      = "Xenia Canary"
@@ -571,251 +568,254 @@ $StandaloneEmulators = @(
     }
 )
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 #  BIOS FILE REFERENCE
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+
+$BIOSPath = $Paths.BIOS
+$RASystemPath = $Paths.RASystem
+$EmulatorsPath = $Paths.Emulators
 
 $BIOSGuide = @"
-╔══════════════════════════════════════════════════════════════════════════════╗
-║               BIOS / FIRMWARE FILE REFERENCE GUIDE                         ║
-║                                                                            ║
-║  Place all BIOS files in: $($Paths.BIOS)                                  ║
-║  RetroArch also checks:   $($Paths.RASystem)                              ║
-║                                                                            ║
-║  All BIOS files must be legally obtained from hardware you own.            ║
-╚══════════════════════════════════════════════════════════════════════════════╝
++==============================================================================+
+|               BIOS / FIRMWARE FILE REFERENCE GUIDE                           |
+|                                                                              |
+|  Place all BIOS files in: $BIOSPath
+|  RetroArch also checks:   $RASystemPath
+|                                                                              |
+|  All BIOS files must be legally obtained from hardware you own.              |
++==============================================================================+
 
-═══════════════════════════════════════════════════
-  PLAYSTATION (PSX) — DuckStation / Beetle PSX
-═══════════════════════════════════════════════════
-  scph5500.bin   — PS1 BIOS (Japan)       (MD5: 8dd7d5296a650fac7319bce665a6a53c)
-  scph5501.bin   — PS1 BIOS (USA)         (MD5: 490f666e1afb15b7362b406ed1cea246)
-  scph5502.bin   — PS1 BIOS (Europe)      (MD5: 32736f17079d0b2b7024407c39bd3050)
+-----------------------------------------------
+  PLAYSTATION (PSX) -- DuckStation / Beetle PSX
+-----------------------------------------------
+  scph5500.bin   -- PS1 BIOS (Japan)       (MD5: 8dd7d5296a650fac7319bce665a6a53c)
+  scph5501.bin   -- PS1 BIOS (USA)         (MD5: 490f666e1afb15b7362b406ed1cea246)
+  scph5502.bin   -- PS1 BIOS (Europe)      (MD5: 32736f17079d0b2b7024407c39bd3050)
 
-═══════════════════════════════════════════════════
-  PLAYSTATION 2 — PCSX2
-═══════════════════════════════════════════════════
-  Place in: $($Paths.Emulators)\pcsx2\bios\
-  SCPH-70012.bin — PS2 BIOS (USA, v12)
-  SCPH-70004.bin — PS2 BIOS (Europe)
-  SCPH-70000.bin — PS2 BIOS (Japan)
+-----------------------------------------------
+  PLAYSTATION 2 -- PCSX2
+-----------------------------------------------
+  Place in: $EmulatorsPath\pcsx2\bios\
+  SCPH-70012.bin -- PS2 BIOS (USA, v12)
+  SCPH-70004.bin -- PS2 BIOS (Europe)
+  SCPH-70000.bin -- PS2 BIOS (Japan)
   (Any valid PS2 BIOS dump will work; PCSX2 auto-detects)
 
-═══════════════════════════════════════════════════
-  PLAYSTATION 3 — RPCS3
-═══════════════════════════════════════════════════
-  PS3UPDAT.PUP   — PS3 Firmware (download from Sony's official site)
-  Install via RPCS3 → File → Install Firmware
+-----------------------------------------------
+  PLAYSTATION 3 -- RPCS3
+-----------------------------------------------
+  PS3UPDAT.PUP   -- PS3 Firmware (download from Sony official site)
+  Install via RPCS3 > File > Install Firmware
 
-═══════════════════════════════════════════════════
-  SEGA DREAMCAST — Flycast / RetroArch Flycast
-═══════════════════════════════════════════════════
-  dc\dc_boot.bin     — Dreamcast BIOS       (MD5: e10c53c2f8b90bab96ead2d368858623)
-  dc\dc_flash.bin    — Dreamcast Flash ROM   (MD5: 0a93f7940c455905bea6e392dfde92a4)
+-----------------------------------------------
+  SEGA DREAMCAST -- Flycast / RetroArch Flycast
+-----------------------------------------------
+  dc\dc_boot.bin     -- Dreamcast BIOS       (MD5: e10c53c2f8b90bab96ead2d368858623)
+  dc\dc_flash.bin    -- Dreamcast Flash ROM   (MD5: 0a93f7940c455905bea6e392dfde92a4)
 
-═══════════════════════════════════════════════════
-  SEGA SATURN — Mednafen Saturn / Kronos
-═══════════════════════════════════════════════════
-  sega_101.bin       — Saturn BIOS (Japan)   (MD5: 85ec9ca47d8f6807718151cbcbf8b689)
-  mpr-17933.bin      — Saturn BIOS (USA/EU)  (MD5: 3240872c70984b6cbfda1586cab68dbe)
+-----------------------------------------------
+  SEGA SATURN -- Mednafen Saturn / Kronos
+-----------------------------------------------
+  sega_101.bin       -- Saturn BIOS (Japan)   (MD5: 85ec9ca47d8f6807718151cbcbf8b689)
+  mpr-17933.bin      -- Saturn BIOS (USA/EU)  (MD5: 3240872c70984b6cbfda1586cab68dbe)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   SEGA CD / MEGA CD
-═══════════════════════════════════════════════════
-  bios_CD_U.bin      — Sega CD BIOS (USA)
-  bios_CD_E.bin      — Sega CD BIOS (Europe)
-  bios_CD_J.bin      — Sega CD BIOS (Japan)
+-----------------------------------------------
+  bios_CD_U.bin      -- Sega CD BIOS (USA)
+  bios_CD_E.bin      -- Sega CD BIOS (Europe)
+  bios_CD_J.bin      -- Sega CD BIOS (Japan)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   SEGA NAOMI / NAOMI 2 / ATOMISWAVE
-═══════════════════════════════════════════════════
-  dc\naomi.zip       — NAOMI BIOS
-  dc\awbios.zip      — Atomiswave BIOS
+-----------------------------------------------
+  dc\naomi.zip       -- NAOMI BIOS
+  dc\awbios.zip      -- Atomiswave BIOS
   (Place in dc subfolder within BIOS directory)
 
-═══════════════════════════════════════════════════
-  NINTENDO DS — melonDS / DeSmuME
-═══════════════════════════════════════════════════
-  bios7.bin          — ARM7 BIOS             (MD5: df692a80a5b1bc90728bc3dfc76cd948)
-  bios9.bin          — ARM9 BIOS             (MD5: a392174eb3e572fed6447e956bde4b25)
-  firmware.bin       — NDS Firmware           (MD5: 145eaef5bd3037cbc247c213bb3da1b3)
+-----------------------------------------------
+  NINTENDO DS -- melonDS / DeSmuME
+-----------------------------------------------
+  bios7.bin          -- ARM7 BIOS             (MD5: df692a80a5b1bc90728bc3dfc76cd948)
+  bios9.bin          -- ARM9 BIOS             (MD5: a392174eb3e572fed6447e956bde4b25)
+  firmware.bin       -- NDS Firmware           (MD5: 145eaef5bd3037cbc247c213bb3da1b3)
   (melonDS can run without BIOS using built-in HLE, but some games need them)
 
-═══════════════════════════════════════════════════
-  NINTENDO 3DS — Citra (and forks)
-═══════════════════════════════════════════════════
+-----------------------------------------------
+  NINTENDO 3DS -- Citra (and forks)
+-----------------------------------------------
   Requires AES keys dumped from your 3DS console.
-  aes_keys.txt       — Place in Citra user directory
+  aes_keys.txt       -- Place in Citra user directory
 
-═══════════════════════════════════════════════════
-  GAME BOY ADVANCE — mGBA / RetroArch mGBA
-═══════════════════════════════════════════════════
-  gba_bios.bin       — GBA BIOS (optional)   (MD5: a860e8c0b6d573d191e4ec7db1b1e4f6)
+-----------------------------------------------
+  GAME BOY ADVANCE -- mGBA / RetroArch mGBA
+-----------------------------------------------
+  gba_bios.bin       -- GBA BIOS (optional)   (MD5: a860e8c0b6d573d191e4ec7db1b1e4f6)
 
-═══════════════════════════════════════════════════
-  GAME BOY / GAME BOY COLOR — Gambatte
-═══════════════════════════════════════════════════
-  gb_bios.bin        — Game Boy BIOS (optional)  (MD5: 32fbbd84168d3482956eb3c5051637f5)
-  gbc_bios.bin       — GBC BIOS (optional)       (MD5: dbfce9db9deaa2567f6a84fde55f9680)
-  sgb_bios.bin       — Super Game Boy BIOS       (MD5: d574d4f9c12f305571c6b0ce18f0c563)
+-----------------------------------------------
+  GAME BOY / GAME BOY COLOR -- Gambatte
+-----------------------------------------------
+  gb_bios.bin        -- Game Boy BIOS (optional)  (MD5: 32fbbd84168d3482956eb3c5051637f5)
+  gbc_bios.bin       -- GBC BIOS (optional)       (MD5: dbfce9db9deaa2567f6a84fde55f9680)
+  sgb_bios.bin       -- Super Game Boy BIOS       (MD5: d574d4f9c12f305571c6b0ce18f0c563)
 
-═══════════════════════════════════════════════════
-  SUPER NINTENDO — BSnes (Super Game Boy)
-═══════════════════════════════════════════════════
-  sgb2_boot.bin      — Super Game Boy 2 BIOS
+-----------------------------------------------
+  SUPER NINTENDO -- BSnes (Super Game Boy)
+-----------------------------------------------
+  sgb2_boot.bin      -- Super Game Boy 2 BIOS
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   FAMICOM DISK SYSTEM
-═══════════════════════════════════════════════════
-  disksys.rom        — FDS BIOS              (MD5: ca30b50f880eb660a320571e2a116f56)
+-----------------------------------------------
+  disksys.rom        -- FDS BIOS              (MD5: ca30b50f880eb660a320571e2a116f56)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   NEC PC ENGINE CD / TURBOGRAFX-CD
-═══════════════════════════════════════════════════
-  syscard3.pce       — System Card 3.0       (MD5: 38179df8f4ac870017db21ebcbf53114)
+-----------------------------------------------
+  syscard3.pce       -- System Card 3.0       (MD5: 38179df8f4ac870017db21ebcbf53114)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   NEC PC-FX
-═══════════════════════════════════════════════════
-  pcfx.rom           — PC-FX BIOS            (MD5: 08e36edbea28a017f79f8d4f7ff9b6d7)
+-----------------------------------------------
+  pcfx.rom           -- PC-FX BIOS            (MD5: 08e36edbea28a017f79f8d4f7ff9b6d7)
 
-═══════════════════════════════════════════════════
-  NEC PC-9801 — Neko Project II
-═══════════════════════════════════════════════════
-  np2kai\bios.rom    — PC-98 BIOS
-  np2kai\font.bmp    — PC-98 Font
-  np2kai\FONT.ROM    — PC-98 Font ROM
-  np2kai\itf.rom     — ITF ROM
-  np2kai\sound.rom   — Sound BIOS
+-----------------------------------------------
+  NEC PC-9801 -- Neko Project II
+-----------------------------------------------
+  np2kai\bios.rom    -- PC-98 BIOS
+  np2kai\font.bmp    -- PC-98 Font
+  np2kai\FONT.ROM    -- PC-98 Font ROM
+  np2kai\itf.rom     -- ITF ROM
+  np2kai\sound.rom   -- Sound BIOS
 
-═══════════════════════════════════════════════════
-  SHARP X68000 — PX68k
-═══════════════════════════════════════════════════
-  keropi\iplrom.dat  — X68000 IPL ROM
-  keropi\cgrom.dat   — X68000 CG ROM
+-----------------------------------------------
+  SHARP X68000 -- PX68k
+-----------------------------------------------
+  keropi\iplrom.dat  -- X68000 IPL ROM
+  keropi\cgrom.dat   -- X68000 CG ROM
 
-═══════════════════════════════════════════════════
-  3DO INTERACTIVE MULTIPLAYER — Opera
-═══════════════════════════════════════════════════
-  panafz1.bin        — Panasonic FZ-1 BIOS   (MD5: f47264dd47fe30f73ab3c010015c155b)
-  panafz10.bin       — Panasonic FZ-10 BIOS  (MD5: 51f2f43ae2f3508a14d9f56597e2d3ce)
-  goldstar.bin       — Goldstar GDO-101M     (MD5: 8970fc987ab89a7f64da9f8a8c4333ff)
+-----------------------------------------------
+  3DO INTERACTIVE MULTIPLAYER -- Opera
+-----------------------------------------------
+  panafz1.bin        -- Panasonic FZ-1 BIOS   (MD5: f47264dd47fe30f73ab3c010015c155b)
+  panafz10.bin       -- Panasonic FZ-10 BIOS  (MD5: 51f2f43ae2f3508a14d9f56597e2d3ce)
+  goldstar.bin       -- Goldstar GDO-101M     (MD5: 8970fc987ab89a7f64da9f8a8c4333ff)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   COLECOVISION
-═══════════════════════════════════════════════════
-  colecovision.rom   — ColecoVision BIOS     (MD5: 2c66f5911e5b42b8ebe113403548eee7)
+-----------------------------------------------
+  colecovision.rom   -- ColecoVision BIOS     (MD5: 2c66f5911e5b42b8ebe113403548eee7)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   INTELLIVISION
-═══════════════════════════════════════════════════
-  exec.bin           — Executive ROM          (MD5: 62e761035cb657903761800f4437b8af)
-  grom.bin           — Graphics ROM           (MD5: 0cd5946c6473e42e8e4c2137785e427f)
+-----------------------------------------------
+  exec.bin           -- Executive ROM          (MD5: 62e761035cb657903761800f4437b8af)
+  grom.bin           -- Graphics ROM           (MD5: 0cd5946c6473e42e8e4c2137785e427f)
 
-═══════════════════════════════════════════════════
-  MSX / MSX2 / MSX turboR — blueMSX
-═══════════════════════════════════════════════════
-  Machines\           — Directory of MSX machine configs
-  Databases\          — Directory of MSX databases
+-----------------------------------------------
+  MSX / MSX2 / MSX turboR -- blueMSX
+-----------------------------------------------
+  Machines\           -- Directory of MSX machine configs
+  Databases\          -- Directory of MSX databases
   (Download the full blueMSX Data Pack)
 
-═══════════════════════════════════════════════════
-  COMMODORE AMIGA — PUAE
-═══════════════════════════════════════════════════
-  kick34005.A500     — Amiga 500 Kickstart 1.3
-  kick40063.A600     — Amiga 600 Kickstart 2.05
-  kick40068.A1200    — Amiga 1200 Kickstart 3.1
-  kick40060.CD32     — CD32 Kickstart 3.1
-  kick40060.CD32.ext — CD32 Extended ROM
+-----------------------------------------------
+  COMMODORE AMIGA -- PUAE
+-----------------------------------------------
+  kick34005.A500     -- Amiga 500 Kickstart 1.3
+  kick40063.A600     -- Amiga 600 Kickstart 2.05
+  kick40068.A1200    -- Amiga 1200 Kickstart 3.1
+  kick40060.CD32     -- CD32 Kickstart 3.1
+  kick40060.CD32.ext -- CD32 Extended ROM
 
-═══════════════════════════════════════════════════
-  ATARI 5200 / 800 — Atari800
-═══════════════════════════════════════════════════
-  5200.rom           — Atari 5200 BIOS       (MD5: 281f20ea4320404ec820fb7ec0693b38)
-  ATARIXL.ROM        — Atari XL/XE OS
-  ATARIBAS.ROM       — Atari BASIC
-  ATARIOSA.ROM       — Atari OS/A
-  ATARIBAS.ROM       — Atari BASIC ROM
+-----------------------------------------------
+  ATARI 5200 / 800 -- Atari800
+-----------------------------------------------
+  5200.rom           -- Atari 5200 BIOS       (MD5: 281f20ea4320404ec820fb7ec0693b38)
+  ATARIXL.ROM        -- Atari XL/XE OS
+  ATARIBAS.ROM       -- Atari BASIC
+  ATARIOSA.ROM       -- Atari OS/A
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   ATARI 7800
-═══════════════════════════════════════════════════
-  7800 BIOS (U).rom  — Atari 7800 BIOS       (MD5: 0763f1ffb006ddbe32e52d497ee848ae)
+-----------------------------------------------
+  7800 BIOS (U).rom  -- Atari 7800 BIOS       (MD5: 0763f1ffb006ddbe32e52d497ee848ae)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   ATARI LYNX
-═══════════════════════════════════════════════════
-  lynxboot.img       — Lynx Boot ROM         (MD5: fcd403db69f54290b51035d82f835e7b)
+-----------------------------------------------
+  lynxboot.img       -- Lynx Boot ROM         (MD5: fcd403db69f54290b51035d82f835e7b)
 
-═══════════════════════════════════════════════════
-  ATARI ST — Hatari
-═══════════════════════════════════════════════════
-  tos.img            — TOS ROM (any version)
+-----------------------------------------------
+  ATARI ST -- Hatari
+-----------------------------------------------
+  tos.img            -- TOS ROM (any version)
 
-═══════════════════════════════════════════════════
-  NEO GEO — FBNeo / MAME
-═══════════════════════════════════════════════════
-  neogeo.zip         — Neo Geo BIOS (place in ROMs dir alongside games)
+-----------------------------------------------
+  NEO GEO -- FBNeo / MAME
+-----------------------------------------------
+  neogeo.zip         -- Neo Geo BIOS (place in ROMs dir alongside games)
 
-═══════════════════════════════════════════════════
-  FAIRCHILD CHANNEL F — FreeChaF
-═══════════════════════════════════════════════════
-  sl31253.bin        — ChannelF BIOS 1       (MD5: ac9804d4c0e9d07e33472e3726ed15c3)
-  sl31254.bin        — ChannelF BIOS 2       (MD5: da98f4f2c0ef0dcb26db376c069ba5cc)
+-----------------------------------------------
+  FAIRCHILD CHANNEL F -- FreeChaF
+-----------------------------------------------
+  sl31253.bin        -- ChannelF BIOS 1       (MD5: ac9804d4c0e9d07e33472e3726ed15c3)
+  sl31254.bin        -- ChannelF BIOS 2       (MD5: da98f4f2c0ef0dcb26db376c069ba5cc)
 
-═══════════════════════════════════════════════════
-  MAGNAVOX ODYSSEY² / VIDEOPAC
-═══════════════════════════════════════════════════
-  o2rom.bin          — Odyssey² BIOS         (MD5: 562d5ebf9e030a40d6fabfc2f33139fd)
-  c52.bin            — Videopac+ G7400 BIOS
+-----------------------------------------------
+  MAGNAVOX ODYSSEY 2 / VIDEOPAC
+-----------------------------------------------
+  o2rom.bin          -- Odyssey 2 BIOS        (MD5: 562d5ebf9e030a40d6fabfc2f33139fd)
+  c52.bin            -- Videopac+ G7400 BIOS
 
-═══════════════════════════════════════════════════
-  XBOX (ORIGINAL) — Xemu
-═══════════════════════════════════════════════════
-  mcpx_1.0.bin       — MCPX Boot ROM
-  Complex_4627.bin   — Flash BIOS image (or other compatible BIOS)
+-----------------------------------------------
+  XBOX (ORIGINAL) -- Xemu
+-----------------------------------------------
+  mcpx_1.0.bin       -- MCPX Boot ROM
+  Complex_4627.bin   -- Flash BIOS image (or other compatible BIOS)
   (Place in xemu directory)
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   PHILIPS CD-i
-═══════════════════════════════════════════════════
-  cdimono1.zip       — CD-i BIOS (MAME format)
-  cdibios.zip        — Alternative BIOS pack
+-----------------------------------------------
+  cdimono1.zip       -- CD-i BIOS (MAME format)
+  cdibios.zip        -- Alternative BIOS pack
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   FUJITSU FM TOWNS
-═══════════════════════════════════════════════════
-  fmtowns\fmt_dic.rom    — Dictionary ROM
-  fmtowns\fmt_dos.rom    — DOS ROM
-  fmtowns\fmt_fnt.rom    — Font ROM
-  fmtowns\fmt_sys.rom    — System ROM
+-----------------------------------------------
+  fmtowns\fmt_dic.rom    -- Dictionary ROM
+  fmtowns\fmt_dos.rom    -- DOS ROM
+  fmtowns\fmt_fnt.rom    -- Font ROM
+  fmtowns\fmt_sys.rom    -- System ROM
 
-═══════════════════════════════════════════════════
+-----------------------------------------------
   NOTES
-═══════════════════════════════════════════════════
-  • Many RetroArch cores also check the "system" subfolder inside RetroArch.
+-----------------------------------------------
+  * Many RetroArch cores also check the "system" subfolder inside RetroArch.
     A symbolic link or copy in both locations ensures maximum compatibility.
-  • MAME/FBNeo ROMs must match the exact version of the emulator.
-  • Neo Geo BIOS (neogeo.zip) should be in BOTH the bios folder AND the
+  * MAME/FBNeo ROMs must match the exact version of the emulator.
+  * Neo Geo BIOS (neogeo.zip) should be in BOTH the bios folder AND the
     roms/neogeo folder for compatibility with different emulator configs.
-  • For systems not listed here, the emulator likely does not require BIOS files
+  * For systems not listed here, the emulator likely does not require BIOS files
     (software-only emulation / HLE).
 "@
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 #  MAIN EXECUTION
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
-Write-Host "║     EmulationStation Desktop Edition — Full Setup Script        ║" -ForegroundColor Magenta
-Write-Host "║     Batocera x86_64 parity · $(Get-Date -Format 'yyyy-MM-dd')                        ║" -ForegroundColor Magenta
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+Write-Host "================================================================" -ForegroundColor Magenta
+Write-Host "  EmulationStation Desktop Edition -- Full Setup Script" -ForegroundColor Magenta
+Write-Host "  Batocera x86_64 parity - $(Get-Date -Format 'yyyy-MM-dd')" -ForegroundColor Magenta
+Write-Host "================================================================" -ForegroundColor Magenta
 Write-Host ""
 Write-Host "  Base path: $BasePath" -ForegroundColor White
 Write-Host ""
 
-# ── 1. Create directory structure ────────────────────────────────────────────
+# -- 1. Create directory structure ---------------------------------------------
 Write-Step "Creating directory structure..."
 
 foreach ($dir in $Paths.Values) {
@@ -838,29 +838,33 @@ foreach ($sys in $Systems.Keys) {
     Ensure-Dir "$($Paths.States)\$sys"
 }
 
-Write-OK "Created $($Systems.Count) ROM directories, BIOS structure, saves & states"
+$sysCount = $Systems.Count
+Write-OK "Created $sysCount ROM directories, BIOS structure, saves and states"
 
-# ── 2. Generate BIOS guide ──────────────────────────────────────────────────
+# -- 2. Generate BIOS guide ----------------------------------------------------
 Write-Step "Writing BIOS reference guide..."
-$BIOSGuide | Out-File -FilePath "$($Paths.BIOS)\BIOS_README.txt" -Encoding UTF8 -Force
+$BIOSGuide | Out-File -FilePath "$($Paths.BIOS)\BIOS_README.txt" -Encoding ASCII -Force
 Write-OK "BIOS guide written to $($Paths.BIOS)\BIOS_README.txt"
 
-# ── 3. Generate ROM directory README files ──────────────────────────────────
+# -- 3. Generate ROM directory README files ------------------------------------
 Write-Step "Writing ROM directory info files..."
 foreach ($sys in $Systems.Keys) {
     $info = $Systems[$sys]
+    $sysName = $info.Name
+    $sysExt = $info.Ext
     $readme = @"
-System: $($info.Name)
+System: $sysName
 Folder: $sys
-Supported extensions: $($info.Ext)
+Supported extensions: $sysExt
 
 Place your legally obtained ROM/disc images in this folder.
 "@
-    $readme | Out-File -FilePath "$($Paths.ROMs)\$sys\_info.txt" -Encoding UTF8 -Force
+    $readmePath = "$($Paths.ROMs)\$sys\_info.txt"
+    $readme | Out-File -FilePath $readmePath -Encoding ASCII -Force
 }
-Write-OK "ROM info files created for $($Systems.Count) systems"
+Write-OK "ROM info files created for $sysCount systems"
 
-# ── If SkipDownloads, stop here ─────────────────────────────────────────────
+# -- If SkipDownloads, stop here -----------------------------------------------
 if ($SkipDownloads) {
     Write-Host ""
     Write-Host "  Directory structure created. Skipping downloads (-SkipDownloads)." -ForegroundColor Yellow
@@ -869,7 +873,7 @@ if ($SkipDownloads) {
     exit 0
 }
 
-# ── 4. Download ES-DE ────────────────────────────────────────────────────────
+# -- 4. Download ES-DE ---------------------------------------------------------
 Write-Step "Downloading EmulationStation Desktop Edition (ES-DE)..."
 Ensure-Dir $Paths.ESDE
 
@@ -889,7 +893,7 @@ else {
     Write-Err "Could not find ES-DE release. Download manually from https://es-de.org"
 }
 
-# ── 5. Download RetroArch ────────────────────────────────────────────────────
+# -- 5. Download RetroArch -----------------------------------------------------
 Write-Step "Downloading RetroArch..."
 Ensure-Dir $Paths.RetroArch
 Ensure-Dir $Paths.RACores
@@ -912,8 +916,9 @@ else {
     }
 }
 
-# ── 6. Download RetroArch Cores ──────────────────────────────────────────────
-Write-Step "Downloading RetroArch cores ($($RetroArchCores.Count) cores)..."
+# -- 6. Download RetroArch Cores -----------------------------------------------
+$coreTotal = $RetroArchCores.Count
+Write-Step "Downloading RetroArch cores ($coreTotal cores)..."
 
 $coreBaseUrl = "https://buildbot.libretro.com/nightly/windows/x86_64/latest"
 $coreCount = 0
@@ -940,15 +945,16 @@ foreach ($core in $RetroArchCores.Keys) {
     }
     catch {
         $coreFails++
-        # Silent — many cores may not exist on nightly for every name variant
+        # Silent -- many cores may not exist on nightly for every name variant
     }
 }
 
 Write-OK "Downloaded $coreCount cores ($coreFails unavailable/failed)"
 
-# ── 7. Download Standalone Emulators ─────────────────────────────────────────
+# -- 7. Download Standalone Emulators ------------------------------------------
 if (-not $RetroArchOnly) {
-    Write-Step "Downloading standalone emulators ($($StandaloneEmulators.Count) emulators)..."
+    $emuTotal = $StandaloneEmulators.Count
+    Write-Step "Downloading standalone emulators ($emuTotal emulators)..."
 
     foreach ($emu in $StandaloneEmulators) {
         Write-Info "Fetching $($emu.Name)..."
@@ -979,7 +985,7 @@ if (-not $RetroArchOnly) {
 
         if (Download-File -Url $assetUrl -Destination $dlPath -Description $emu.Name) {
             if ($ext -eq ".exe") {
-                # Standalone exe — just copy
+                # Standalone exe -- just copy
                 Copy-Item -Path $dlPath -Destination "$emuDir\$($emu.Folder).exe" -Force
                 Write-OK "Installed $($emu.Name)"
             }
@@ -993,21 +999,26 @@ else {
     Write-Skip "Skipping standalone emulators (-RetroArchOnly)"
 }
 
-# ── 8. Create RetroArch system BIOS symlink ─────────────────────────────────
+# -- 8. Create RetroArch system BIOS symlink -----------------------------------
 Write-Step "Linking BIOS directory to RetroArch system folder..."
 try {
-    # Copy BIOS contents to RA system dir (symlinks need admin)
     $linkTarget = $Paths.BIOS
     $linkPath = $Paths.RASystem
 
-    if (-not (Get-Item $linkPath -ErrorAction SilentlyContinue).Attributes.ToString().Contains("ReparsePoint")) {
+    $existingItem = Get-Item $linkPath -ErrorAction SilentlyContinue
+    $isJunction = $false
+    if ($existingItem) {
+        $isJunction = $existingItem.Attributes.ToString().Contains("ReparsePoint")
+    }
+
+    if (-not $isJunction) {
         # Try junction first (no admin needed)
-        cmd /c mklink /J "$linkPath" "$linkTarget" 2>$null
+        cmd /c mklink /J "`"$linkPath`"" "`"$linkTarget`"" 2>$null
         if ($LASTEXITCODE -eq 0) {
-            Write-OK "Created junction: RetroArch\system → bios"
+            Write-OK "Created junction: RetroArch\system -> bios"
         }
         else {
-            Write-Info "Junction failed — BIOS files should be copied to both locations"
+            Write-Info "Junction failed -- BIOS files should be copied to both locations"
         }
     }
 }
@@ -1015,68 +1026,74 @@ catch {
     Write-Info "Could not link BIOS dirs. Copy BIOS files to both $($Paths.BIOS) and $($Paths.RASystem)"
 }
 
-# ── 9. Generate ES-DE custom systems config snippet ─────────────────────────
+# -- 9. Generate ES-DE custom systems config snippet --------------------------
 Write-Step "Generating ES-DE configuration notes..."
 
+$romsPath = $Paths.ROMs
+$retroArchPath = $Paths.RetroArch
+$coresPath = $Paths.RACores
+
 $esdeConfig = @"
-# ══════════════════════════════════════════════════════════════════════════════
-# ES-DE Configuration Notes
-# ══════════════════════════════════════════════════════════════════════════════
-#
-# ES-DE will auto-detect most settings. The key paths to configure in ES-DE:
-#
-# ROM Directory:        $($Paths.ROMs)
-# Media Directory:      $BasePath\downloaded_media
-#
-# ES-DE Settings → Other Settings:
-#   • Set "ROM directory" to the path above
-#   • Set "Media directory" to $BasePath\downloaded_media
-#
-# ES-DE Settings → Emulator / core assignments (per system):
-#   Default emulator should be RetroArch for most systems.
-#   Configure exceptions for standalone emulators:
-#
-#   PlayStation 2  → PCSX2 (standalone)     : $($Paths.Emulators)\pcsx2\
-#   PlayStation 3  → RPCS3 (standalone)     : $($Paths.Emulators)\rpcs3\
-#   PlayStation 1  → DuckStation (standalone): $($Paths.Emulators)\duckstation\
-#   GameCube/Wii   → Dolphin (standalone)   : $($Paths.Emulators)\dolphin\
-#   Wii U          → Cemu (standalone)      : $($Paths.Emulators)\cemu\
-#   Xbox           → Xemu (standalone)      : $($Paths.Emulators)\xemu\
-#   Xbox 360       → Xenia (standalone)     : $($Paths.Emulators)\xenia\
-#   Nintendo DS    → melonDS (standalone)   : $($Paths.Emulators)\melonds\
-#   PSP            → PPSSPP (standalone)    : $($Paths.Emulators)\ppsspp\
-#   PS Vita        → Vita3K (standalone)    : $($Paths.Emulators)\vita3k\
-#   Dreamcast      → Flycast (standalone)   : $($Paths.Emulators)\flycast\
-#   Arcade/MAME    → MAME (standalone)      : $($Paths.Emulators)\mame\
-#   DOS            → DOSBox Staging         : $($Paths.Emulators)\dosbox-staging\
-#   ScummVM        → ScummVM (standalone)   : $($Paths.Emulators)\scummvm\
-#
-# All other systems default to RetroArch with the appropriate core.
-#
-# RetroArch Location:   $($Paths.RetroArch)
-# RetroArch Cores:      $($Paths.RACores)
-#
-# ══════════════════════════════════════════════════════════════════════════════
-#
-# SCRAPING: ES-DE has a built-in scraper. Go to:
-#   Main Menu → Scraper → ScreenScraper (recommended)
-#   Create a free account at https://www.screenscraper.fr/
-#   Then scrape your ROM collection for box art, descriptions, videos, etc.
-#
-# ══════════════════════════════════════════════════════════════════════════════
+==============================================================================
+ ES-DE Configuration Notes
+==============================================================================
+
+ ES-DE will auto-detect most settings. The key paths to configure in ES-DE:
+
+ ROM Directory:        $romsPath
+ Media Directory:      $BasePath\downloaded_media
+
+ ES-DE Settings > Other Settings:
+   - Set "ROM directory" to the path above
+   - Set "Media directory" to $BasePath\downloaded_media
+
+ ES-DE Settings > Emulator / core assignments (per system):
+   Default emulator should be RetroArch for most systems.
+   Configure exceptions for standalone emulators:
+
+   PlayStation 2   > PCSX2 (standalone)     : $EmulatorsPath\pcsx2\
+   PlayStation 3   > RPCS3 (standalone)     : $EmulatorsPath\rpcs3\
+   PlayStation 1   > DuckStation (standalone): $EmulatorsPath\duckstation\
+   GameCube/Wii    > Dolphin (standalone)   : $EmulatorsPath\dolphin\
+   Wii U           > Cemu (standalone)      : $EmulatorsPath\cemu\
+   Xbox            > Xemu (standalone)      : $EmulatorsPath\xemu\
+   Xbox 360        > Xenia (standalone)     : $EmulatorsPath\xenia\
+   Nintendo DS     > melonDS (standalone)   : $EmulatorsPath\melonds\
+   PSP             > PPSSPP (standalone)    : $EmulatorsPath\ppsspp\
+   PS Vita         > Vita3K (standalone)    : $EmulatorsPath\vita3k\
+   Dreamcast       > Flycast (standalone)   : $EmulatorsPath\flycast\
+   Arcade/MAME     > MAME (standalone)      : $EmulatorsPath\mame\
+   DOS             > DOSBox Staging         : $EmulatorsPath\dosbox-staging\
+   ScummVM         > ScummVM (standalone)   : $EmulatorsPath\scummvm\
+
+ All other systems default to RetroArch with the appropriate core.
+
+ RetroArch Location:   $retroArchPath
+ RetroArch Cores:      $coresPath
+
+==============================================================================
+
+ SCRAPING: ES-DE has a built-in scraper. Go to:
+   Main Menu > Scraper > ScreenScraper (recommended)
+   Create a free account at https://www.screenscraper.fr/
+   Then scrape your ROM collection for box art, descriptions, videos, etc.
+
+==============================================================================
 "@
 
-$esdeConfig | Out-File -FilePath "$($Paths.Config)\ES-DE_SETUP_NOTES.txt" -Encoding UTF8 -Force
+$esdeConfig | Out-File -FilePath "$($Paths.Config)\ES-DE_SETUP_NOTES.txt" -Encoding ASCII -Force
 Write-OK "Configuration notes written to $($Paths.Config)\ES-DE_SETUP_NOTES.txt"
 
-# ── 10. Create a quick-launch batch file ─────────────────────────────────────
+# -- 10. Create a quick-launch batch file --------------------------------------
 Write-Step "Creating launcher..."
+
+$esdePath = $Paths.ESDE
 
 $launcher = @"
 @echo off
 title EmulationStation Desktop Edition
 echo Starting ES-DE...
-cd /d "$($Paths.ESDE)"
+cd /d "$esdePath"
 
 REM Try common ES-DE executable names
 if exist "ES-DE.exe" (
@@ -1094,54 +1111,54 @@ for %%f in (*.exe) do (
     exit
 )
 
-echo Could not find ES-DE executable. Please check $($Paths.ESDE)
+echo Could not find ES-DE executable. Please check $esdePath
 pause
 "@
 
 $launcher | Out-File -FilePath "$BasePath\Launch_ES-DE.bat" -Encoding ASCII -Force
 Write-OK "Launcher created: $BasePath\Launch_ES-DE.bat"
 
-# ── 11. Summary ──────────────────────────────────────────────────────────────
+# -- 11. Summary ---------------------------------------------------------------
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║                    SETUP COMPLETE                               ║" -ForegroundColor Green
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "================================================================" -ForegroundColor Green
+Write-Host "                      SETUP COMPLETE" -ForegroundColor Green
+Write-Host "================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Directory structure:" -ForegroundColor White
 Write-Host "    $BasePath"
-Write-Host "    ├── emulators\        ← All emulators (ES-DE, RetroArch, standalone)"
-Write-Host "    │   ├── ES-DE\        ← EmulationStation Desktop Edition"
-Write-Host "    │   ├── RetroArch\    ← RetroArch portable with cores"
-Write-Host "    │   ├── dolphin\      ← GameCube / Wii"
-Write-Host "    │   ├── pcsx2\        ← PlayStation 2"
-Write-Host "    │   ├── rpcs3\        ← PlayStation 3"
-Write-Host "    │   ├── duckstation\  ← PlayStation 1"
-Write-Host "    │   ├── ppsspp\       ← PSP"
-Write-Host "    │   ├── cemu\         ← Wii U"
-Write-Host "    │   ├── xemu\         ← Xbox"
-Write-Host "    │   ├── xenia\        ← Xbox 360"
-Write-Host "    │   ├── melonds\      ← Nintendo DS"
-Write-Host "    │   ├── mgba\         ← GBA / GB / GBC"
-Write-Host "    │   ├── flycast\      ← Dreamcast / NAOMI"
-Write-Host "    │   ├── vita3k\       ← PS Vita"
-Write-Host "    │   ├── mame\         ← Arcade (MAME)"
-Write-Host "    │   ├── dosbox-staging\ ← MS-DOS"
-Write-Host "    │   └── scummvm\      ← ScummVM"
-Write-Host "    ├── roms\             ← $($Systems.Count) system folders"
-Write-Host "    ├── bios\             ← BIOS/firmware files (see BIOS_README.txt)"
-Write-Host "    ├── saves\            ← Save files per system"
-Write-Host "    ├── states\           ← Save states per system"
-Write-Host "    ├── config\           ← Configuration files"
-Write-Host "    └── Launch_ES-DE.bat  ← Quick launcher"
+Write-Host "    |-- emulators\        <- All emulators (ES-DE, RetroArch, standalone)"
+Write-Host "    |   |-- ES-DE\        <- EmulationStation Desktop Edition"
+Write-Host "    |   |-- RetroArch\    <- RetroArch portable with cores"
+Write-Host "    |   |-- dolphin\      <- GameCube / Wii"
+Write-Host "    |   |-- pcsx2\        <- PlayStation 2"
+Write-Host "    |   |-- rpcs3\        <- PlayStation 3"
+Write-Host "    |   |-- duckstation\  <- PlayStation 1"
+Write-Host "    |   |-- ppsspp\       <- PSP"
+Write-Host "    |   |-- cemu\         <- Wii U"
+Write-Host "    |   |-- xemu\         <- Xbox"
+Write-Host "    |   |-- xenia\        <- Xbox 360"
+Write-Host "    |   |-- melonds\      <- Nintendo DS"
+Write-Host "    |   |-- mgba\         <- GBA / GB / GBC"
+Write-Host "    |   |-- flycast\      <- Dreamcast / NAOMI"
+Write-Host "    |   |-- vita3k\       <- PS Vita"
+Write-Host "    |   |-- mame\         <- Arcade (MAME)"
+Write-Host "    |   |-- dosbox-staging\ <- MS-DOS"
+Write-Host "    |   \-- scummvm\      <- ScummVM"
+Write-Host "    |-- roms\             <- $sysCount system folders"
+Write-Host "    |-- bios\             <- BIOS/firmware files (see BIOS_README.txt)"
+Write-Host "    |-- saves\            <- Save files per system"
+Write-Host "    |-- states\           <- Save states per system"
+Write-Host "    |-- config\           <- Configuration files"
+Write-Host "    \-- Launch_ES-DE.bat  <- Quick launcher"
 Write-Host ""
 Write-Host "  NEXT STEPS:" -ForegroundColor Yellow
 Write-Host "    1. Read $($Paths.BIOS)\BIOS_README.txt and add your BIOS files" -ForegroundColor White
 Write-Host "    2. Read $($Paths.Config)\ES-DE_SETUP_NOTES.txt for ES-DE config" -ForegroundColor White
 Write-Host "    3. Place your legally obtained ROMs in the appropriate roms\ subfolder" -ForegroundColor White
 Write-Host "    4. Launch ES-DE and configure ROM/media paths" -ForegroundColor White
-Write-Host "    5. Scrape your collection for artwork & metadata" -ForegroundColor White
+Write-Host "    5. Scrape your collection for artwork and metadata" -ForegroundColor White
 Write-Host ""
-Write-Host "  Total systems configured: $($Systems.Count)" -ForegroundColor Cyan
-Write-Host "  RetroArch cores included: $($RetroArchCores.Count)" -ForegroundColor Cyan
-Write-Host "  Standalone emulators:     $($StandaloneEmulators.Count)" -ForegroundColor Cyan
+Write-Host "  Total systems configured: $sysCount" -ForegroundColor Cyan
+Write-Host "  RetroArch cores included: $coreTotal" -ForegroundColor Cyan
+Write-Host "  Standalone emulators:     $emuTotal" -ForegroundColor Cyan
 Write-Host ""
