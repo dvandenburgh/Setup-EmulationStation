@@ -34,8 +34,8 @@
 
 .NOTES
     Author  : Claude (Anthropic) + David
-    Version : 1.2.0
-    Date    : 2026-03-16
+    Version : 1.3.0
+    Date    : 2026-03-17
     License : MIT -- use at your own risk
 #>
 
@@ -449,23 +449,24 @@ function Write-ESDEEmulatorDefaults {
 
     $settingsFile = Join-Path $esdeDir "es_settings.xml"
 
-    # System -> emulator label mappings (must match es_systems.xml command labels)
-    # These are the labels ES-DE uses in its bundled Windows es_systems.xml
+    # System -> emulator label mappings (must match es_systems.xml command labels exactly)
+    # ES-DE appends "(Standalone)" to all standalone emulator labels on Windows.
+    # PS3 has separate "Directory" and "Shortcut" modes; we use Directory for game folders.
     $defaults = [ordered]@{
         "ps2"       = "PCSX2 (Standalone)"
-        "ps3"       = "RPCS3"
+        "ps3"       = "RPCS3 Directory (Standalone)"
         "gc"        = "Dolphin (Standalone)"
         "wii"       = "Dolphin (Standalone)"
-        "wiiu"      = "Cemu"
-        "switch"    = "Ryujinx"
+        "wiiu"      = "Cemu (Standalone)"
+        "switch"    = "Ryujinx (Standalone)"
         "psx"       = "DuckStation (Standalone)"
         "psp"       = "PPSSPP (Standalone)"
         "nds"       = "melonDS (Standalone)"
         "dreamcast" = "Flycast (Standalone)"
-        "xbox"      = "xemu"
-        "xbox360"   = "Xenia"
+        "xbox"      = "xemu (Standalone)"
+        "xbox360"   = "xenia (Standalone)"
         "psvita"    = "Vita3K (Standalone)"
-        "ps4"       = "shadPS4"
+        "ps4"       = "shadPS4 eboot.bin (Standalone)"
     }
 
     if (Test-Path $settingsFile) {
@@ -629,19 +630,19 @@ $RetroArchCores = [ordered]@{
 #  STANDALONE EMULATORS
 # ==============================================================================
 # Folder names here must match what es_find_rules.xml expects inside Emulators/.
-# ES-DE searches for e.g. Emulators/PCSX2/pcsx2*.exe, Emulators/Dolphin/Dolphin.exe, etc.
+# ES-DE searches for e.g. Emulators/PCSX2-Qt/pcsx2-qt*.exe, Emulators/Dolphin-x64/Dolphin.exe, etc.
 
 $StandaloneEmulators = @(
     @{
         Name      = "Dolphin"
-        Folder    = "Dolphin"
+        Folder    = "Dolphin-x64"
         PrimaryExe= "Dolphin.exe"
         DirectUrl = "https://dl.dolphin-emu.org/releases/2412/dolphin-2412-x64.7z"
         Notes     = "GameCube and Wii emulator"
     },
     @{
         Name      = "PCSX2"
-        Folder    = "PCSX2"
+        Folder    = "PCSX2-Qt"
         PrimaryExe= "pcsx2-qt.exe"
         DirectUrl = "https://github.com/PCSX2/pcsx2/releases/download/v2.4.0/pcsx2-v2.4.0-windows-x64-Qt.7z"
         DirectExt = ".7z"
@@ -675,7 +676,7 @@ $StandaloneEmulators = @(
     },
     @{
         Name      = "Cemu"
-        Folder    = "Cemu"
+        Folder    = "cemu"
         PrimaryExe= "Cemu.exe"
         Repo      = "cemu-project/Cemu"
         Pattern   = "cemu.*windows.*x64.*\.zip$"
@@ -691,7 +692,7 @@ $StandaloneEmulators = @(
     },
     @{
         Name      = "Xenia Canary"
-        Folder    = "Xenia"
+        Folder    = "xenia_canary"
         PrimaryExe= "xenia_canary.exe"
         Repo      = "xenia-canary/xenia-canary-releases"
         Pattern   = "xenia_canary.*\.zip$"
@@ -723,14 +724,14 @@ $StandaloneEmulators = @(
     },
     @{
         Name      = "ScummVM"
-        Folder    = "ScummVM"
+        Folder    = "scummvm"
         PrimaryExe= "scummvm.exe"
         DirectUrl = "https://downloads.scummvm.org/frs/scummvm/2.9.1/scummvm-2.9.1-win32-x86_64.zip"
         Notes     = "Adventure game engine"
     },
     @{
         Name      = "Flycast"
-        Folder    = "Flycast"
+        Folder    = "flycast"
         PrimaryExe= "flycast.exe"
         Repo      = "flyinghead/flycast"
         Pattern   = "flycast.*win.*x64.*\.zip$|flycast.*windows.*\.zip$"
@@ -746,15 +747,15 @@ $StandaloneEmulators = @(
     },
     @{
         Name      = "MAME"
-        Folder    = "MAME"
-        PrimaryExe= "MAME.exe"
+        Folder    = "mame"
+        PrimaryExe= "mame.exe"
         Repo      = "mamedev/mame"
         Pattern   = "mame.*b_x64\.exe$"
         Notes     = "Multi-Arcade Machine Emulator (self-extracting archive)"
     },
     @{
         Name      = "Ryujinx (Ryubing)"
-        Folder    = "Ryujinx"
+        Folder    = "ryujinx"
         PrimaryExe= "Ryujinx.exe"
         Repo      = "Kenji-NX/Releases"
         Pattern   = "ryujinx.*win.*x64.*\.zip$|.*[Ww]indows.*[Aa]rtifact.*\.zip$"
@@ -763,7 +764,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "shadPS4"
         Folder    = "shadPS4"
-        PrimaryExe= "shadps4.exe"
+        PrimaryExe= "shadPS4.exe"
         Repo      = "shadps4-emu/shadPS4"
         Pattern   = "shadps4-win64-qt.*\.zip$"
         Notes     = "PlayStation 4 emulator -- requires PS4 firmware modules in sys_modules folder"
@@ -788,7 +789,7 @@ $BIOSGuide = @"
 +==============================================================================+
 
   Most BIOS files go in: Emulators\RetroArch\system\
-  PCSX2 BIOS goes in:    Emulators\PCSX2\bios\
+  PCSX2 BIOS goes in:    Emulators\PCSX2-Qt\bios\
   RPCS3 firmware:        Install via RPCS3 > File > Install Firmware
 
 -----------------------------------------------
@@ -801,7 +802,7 @@ $BIOSGuide = @"
 -----------------------------------------------
   PLAYSTATION 2 -- PCSX2
 -----------------------------------------------
-  Place in: $emuDir\PCSX2\bios\
+  Place in: $emuDir\PCSX2-Qt\bios\
   SCPH-70012.bin -- PS2 BIOS (USA, v12)
   SCPH-70004.bin -- PS2 BIOS (Europe)
   SCPH-70000.bin -- PS2 BIOS (Japan)
@@ -1272,6 +1273,10 @@ if (-not $RetroArchOnly) {
                         }
                         Ensure-Dir (Join-Path $emuInstallDir "bios")
                     }
+                    # Ryujinx stores config locally when a "portable" folder exists
+                    if ($emu.Name -like "Ryujinx*") {
+                        Ensure-Dir (Join-Path $emuInstallDir "portable")
+                    }
                 }
                 else {
                     Reset-DirectoryContents $emuInstallDir
@@ -1327,7 +1332,7 @@ $guideText = @"
  BIOS FILES:
    See BIOS_README.txt for the full list with MD5 checksums.
    Most go in: Emulators\RetroArch\system\
-   PCSX2 BIOS goes in: Emulators\PCSX2\bios\
+   PCSX2 BIOS goes in: Emulators\PCSX2-Qt\bios\
 
  SCRAPING (box art, screenshots, descriptions):
    1. Create a free account at https://www.screenscraper.fr/
@@ -1387,8 +1392,8 @@ Write-Host "    |-- Emulators\" -ForegroundColor White
 Write-Host "    |   |-- RetroArch\        <- RetroArch + $coreTotal cores" -ForegroundColor White
 Write-Host "    |   |   |-- cores\        <- libretro core DLLs" -ForegroundColor Gray
 Write-Host "    |   |   \-- system\       <- BIOS files go here" -ForegroundColor Gray
-Write-Host "    |   |-- Dolphin\          <- GameCube / Wii" -ForegroundColor Gray
-Write-Host "    |   |-- PCSX2\            <- PlayStation 2" -ForegroundColor Gray
+Write-Host "    |   |-- Dolphin-x64\      <- GameCube / Wii" -ForegroundColor Gray
+Write-Host "    |   |-- PCSX2-Qt\         <- PlayStation 2" -ForegroundColor Gray
 Write-Host "    |   |-- RPCS3\            <- PlayStation 3" -ForegroundColor Gray
 Write-Host "    |   |-- duckstation\      <- PlayStation 1" -ForegroundColor Gray
 Write-Host "    |   |-- PPSSPP\           <- PSP" -ForegroundColor Gray
