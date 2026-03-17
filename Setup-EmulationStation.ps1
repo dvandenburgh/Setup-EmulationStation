@@ -9,7 +9,7 @@
       1. Download and extract ES-DE portable for Windows
       2. Create ROMs/ and Emulators/ directories where ES-DE expects them
       3. Download RetroArch portable with ~80 libretro cores
-      4. Download 16 standalone emulators into Emulators/
+      4. Download 17 standalone emulators into Emulators/
       5. Generate a BIOS reference guide with MD5 checksums
       6. Generate a quick-start configuration guide
 
@@ -465,6 +465,7 @@ function Write-ESDEEmulatorDefaults {
         "xbox"      = "xemu"
         "xbox360"   = "Xenia"
         "psvita"    = "Vita3K (Standalone)"
+        "ps4"       = "shadPS4"
     }
 
     if (Test-Path $settingsFile) {
@@ -758,6 +759,14 @@ $StandaloneEmulators = @(
         Repo      = "Kenji-NX/Releases"
         Pattern   = "ryujinx.*win.*x64.*\.zip$|.*[Ww]indows.*[Aa]rtifact.*\.zip$"
         Notes     = "Nintendo Switch emulator -- requires prod.keys and firmware from your Switch"
+    },
+    @{
+        Name      = "shadPS4"
+        Folder    = "shadPS4"
+        PrimaryExe= "shadps4.exe"
+        Repo      = "shadps4-emu/shadPS4"
+        Pattern   = "shadps4-win64-qt.*\.zip$"
+        Notes     = "PlayStation 4 emulator -- requires PS4 firmware modules in sys_modules folder"
     }
 )
 
@@ -908,6 +917,15 @@ $BIOSGuide = @"
   title.keys         -- Title keys (optional, not required for most games)
   Switch firmware     -- Install via Ryujinx > Tools > Install Firmware
   (Keys go in Ryujinx user folder > system\, firmware installed via GUI)
+
+-----------------------------------------------
+  PLAYSTATION 4 -- shadPS4
+-----------------------------------------------
+  Requires PS4 firmware modules dumped from your own console.
+  Place them in: Emulators\shadPS4\user\sys_modules\
+  Required modules include: libSceNgs2.sprx, libSceLibcInternal.sprx,
+  libSceDiscMap.sprx, and others (see shadPS4 quickstart guide).
+  Games must be dumped as installed pkg folders (CUSAXXXXX format).
 
 -----------------------------------------------
   NOTES
@@ -1374,7 +1392,7 @@ Write-Host "    |   |-- PCSX2\            <- PlayStation 2" -ForegroundColor Gra
 Write-Host "    |   |-- RPCS3\            <- PlayStation 3" -ForegroundColor Gray
 Write-Host "    |   |-- duckstation\      <- PlayStation 1" -ForegroundColor Gray
 Write-Host "    |   |-- PPSSPP\           <- PSP" -ForegroundColor Gray
-Write-Host "    |   \-- ... (16 standalone emulators)" -ForegroundColor Gray
+Write-Host "    |   \-- ... (17 standalone emulators)" -ForegroundColor Gray
 Write-Host "    |-- BIOS_README.txt       <- BIOS reference with MD5s" -ForegroundColor White
 Write-Host "    |-- QUICK_START.txt       <- Setup guide" -ForegroundColor White
 Write-Host "    \-- Launch_ES-DE.bat      <- Quick launcher" -ForegroundColor White

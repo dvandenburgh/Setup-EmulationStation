@@ -2,7 +2,7 @@
 
 A single PowerShell script that bootstraps a complete [ES-DE (EmulationStation Desktop Edition)](https://es-de.org) portable install on Windows 11, targeting full parity with the [Batocera](https://batocera.org) x86_64 system list.
 
-One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standalone emulators (including Nintendo Switch), a detailed BIOS reference guide with MD5 checksums, and pre-configured emulator defaults so standalone emulators are used where they should be.
+One command gives you the frontend, RetroArch with ~80 libretro cores, 17 standalone emulators (including Nintendo Switch), a detailed BIOS reference guide with MD5 checksums, and pre-configured emulator defaults so standalone emulators are used where they should be.
 
 ---
 
@@ -13,7 +13,7 @@ One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standa
 | **ES-DE portable** | Downloads the latest ES-DE portable release from GitLab and extracts it so `ES-DE.exe` sits at the install root. |
 | **VC++ Redist** | Installs the Visual C++ x64 Redistributable if not already present (required by several emulators). |
 | **RetroArch** | Downloads RetroArch 1.20.0 portable from the libretro buildbot, then pulls ~80 cores from the nightly channel. |
-| **Standalone emulators** | Downloads 16 standalone emulators from their latest GitHub/GitLab releases into `Emulators\` where ES-DE auto-discovers them. |
+| **Standalone emulators** | Downloads 17 standalone emulators from their latest GitHub/GitLab releases into `Emulators\` where ES-DE auto-discovers them. |
 | **Emulator defaults** | Pre-creates `ES-DE/es_settings.xml` with standalone emulators set as the system-level default for PS2, PS3, GameCube, Wii, Switch, PSX, PSP, NDS, Dreamcast, Xbox, Xbox 360, Wii U, and PS Vita. Per-game overrides remain enabled. |
 | **ROM directories** | Creates an empty `ROMs\` directory. On first launch, ES-DE generates correctly named subfolders for all 150+ supported systems via its built-in directory generator. |
 | **BIOS guide** | Generates `BIOS_README.txt` listing every required and optional firmware file with MD5 hashes. |
@@ -103,6 +103,7 @@ C:\EmulationStation\
 |   |-- PPSSPP\                     <- PSP
 |   |-- Cemu\                       <- Wii U
 |   |-- Ryujinx\                    <- Nintendo Switch (Ryubing fork)
+|   |-- shadPS4\                    <- PlayStation 4
 |   |-- xemu\                       <- Xbox
 |   |-- Xenia\                      <- Xbox 360
 |   |-- melonDS\                    <- Nintendo DS
@@ -120,7 +121,7 @@ C:\EmulationStation\
 
 ## Standalone Emulators
 
-All 16 are downloaded automatically from their official sources:
+All 17 are downloaded automatically from their official sources:
 
 | Emulator | System(s) | Source |
 |----------|-----------|--------|
@@ -141,6 +142,7 @@ All 16 are downloaded automatically from their official sources:
 | MAME | Arcade | mamedev/mame |
 | DOSBox Staging | MS-DOS | dosbox-staging/dosbox-staging |
 | ScummVM | Adventure games | scummvm.org |
+| shadPS4 | PlayStation 4 | shadps4-emu/shadPS4 |
 
 ## Emulator Configuration
 
@@ -161,6 +163,7 @@ The script pre-creates `ES-DE/es_settings.xml` with standalone emulators set as 
 | Xbox | xemu |
 | Xbox 360 | Xenia |
 | PS Vita | Vita3K (Standalone) |
+| PlayStation 4 | shadPS4 |
 
 All other systems default to RetroArch with the appropriate core.
 
@@ -180,7 +183,7 @@ NES, SNES, N64, GameCube, Wii, Wii U, Switch, Game Boy, Game Boy Color, Game Boy
 <details>
 <summary><strong>Sony</strong></summary>
 
-PlayStation, PlayStation 2, PlayStation 3, PSP, PS Vita
+PlayStation, PlayStation 2, PlayStation 3, PlayStation 4, PSP, PS Vita
 
 </details>
 
@@ -255,6 +258,7 @@ The generated `BIOS_README.txt` (in both the install root and `Emulators\RetroAr
 - **PlayStation 2** -- Any valid SCPH dump placed in `Emulators\PCSX2\bios\`
 - **PlayStation 3** -- `PS3UPDAT.PUP` installed via RPCS3 > File > Install Firmware
 - **Nintendo Switch** -- `prod.keys` dumped from your Switch, firmware installed via Ryujinx > Tools > Install Firmware
+- **PlayStation 4** -- Firmware modules dumped from your PS4, placed in `Emulators\shadPS4\user\sys_modules\`
 - **Dreamcast** -- `dc_boot.bin`, `dc_flash.bin` in `Emulators\RetroArch\system\dc\`
 - **Saturn** -- `mpr-17933.bin` (USA/EU), `sega_101.bin` (JP)
 - **Sega CD** -- `bios_CD_U.bin`, `bios_CD_E.bin`, `bios_CD_J.bin`
