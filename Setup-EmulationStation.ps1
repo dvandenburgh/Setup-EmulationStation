@@ -34,7 +34,7 @@
 
 .NOTES
     Author  : Claude (Anthropic) + David
-    Version : 1.3.0
+    Version : 1.4.0
     Date    : 2026-03-17
     License : MIT -- use at your own risk
 #>
@@ -529,15 +529,40 @@ function Write-ESDEEmulatorDefaults {
 }
 
 # ==============================================================================
-#  NOTE ON ROM DIRECTORIES
+#  ROM SYSTEM DIRECTORIES
 # ==============================================================================
-#  ES-DE has its own system folder names defined in its bundled es_systems.xml
-#  (e.g. "gc" for GameCube, "gameandwatch" for Game & Watch, etc.) which differ
-#  from Batocera naming. Rather than maintain a hand-coded list that drifts out
-#  of sync, this script creates an empty ROMs\ directory and lets ES-DE
-#  generate the correct subdirectories on first launch via its built-in
-#  "Generate directory structure" button in the startup dialog.
+#  Extracted from ES-DE v3.4 es_systems.xml (Windows).
+#  These are all 195 system folder names ES-DE recognises inside ROMs\.
+#  Creating them up front means ES-DE shows every system on first launch
+#  without the user needing to click "Generate directory structure".
 # ==============================================================================
+
+$ROMSystems = @(
+    "3do","adam","ags","amiga","amiga1200","amiga600","amigacd32","amstradcpc",
+    "android","androidapps","androidgames","apple2","apple2gs","arcade","arcadia",
+    "archimedes","arduboy","astrocde","atari2600","atari5200","atari7800","atari800",
+    "atarijaguar","atarijaguarcd","atarilynx","atarist","atarixe","atomiswave",
+    "bbcmicro","c64","cdimono1","cdtv","chailove","channelf","coco","colecovision",
+    "consolearcade","cps","cps1","cps2","cps3","crvision","daphne","desktop","doom",
+    "dos","dragon32","dreamcast","easyrpg","electron","emulators","epic","famicom",
+    "fba","fbneo","fds","flash","fm7","fmtowns","fpinball","gamate","gameandwatch",
+    "gamecom","gamegear","gb","gba","gbc","gc","genesis","gmaster","gx4000",
+    "intellivision","j2me","kodi","laserdisc","lcdgames","lowresnx","lutris","lutro",
+    "macintosh","mame","mame-advmame","mark3","mastersystem","megacd","megacdjp",
+    "megadrive","megadrivejp","megaduck","mess","model2","model3","moto","msx","msx1",
+    "msx2","msxturbor","mugen","multivision","n3ds","n64","n64dd","naomi","naomi2",
+    "naomigd","nds","neogeo","neogeocd","neogeocdjp","nes","ngage","ngp","ngpc",
+    "odyssey2","openbor","oric","palm","pc","pc88","pc98","pcarcade","pcengine",
+    "pcenginecd","pcfx","pico8","plus4","pokemini","ports","ps2","ps3","ps4","psp",
+    "psvita","psx","pv1000","quake","samcoupe","satellaview","saturn","saturnjp",
+    "scummvm","scv","sega32x","sega32xjp","sega32xna","segacd","sfc","sg-1000","sgb",
+    "snes","snesna","solarus","spectravideo","steam","stv","sufami","supergrafx",
+    "supervision","supracan","switch","symbian","tanodragon","tg-cd","tg16","ti99",
+    "tic80","to8","triforce","trs-80","type-x","uzebox","vectrex","vic20","videopac",
+    "vircon32","virtualboy","vpinball","vsmile","wasm4","wii","wiiu","windows",
+    "windows3x","windows9x","wonderswan","wonderswancolor","x1","x68000","xbox",
+    "xbox360","xboxone","zmachine","zx81","zxnext","zxspectrum"
+)
 
 # ==============================================================================
 #  RETROARCH CORES -- mapped to systems
@@ -967,7 +992,17 @@ foreach ($sub in @("dc","np2kai","keropi","fmtowns","Machines","Databases")) {
     Ensure-Dir "$($Paths.RASystem)\$sub"
 }
 
-Write-OK "Created directory structure and BIOS subdirectories"
+# ROM system directories (all 195 from ES-DE es_systems.xml)
+$romCreated = 0
+foreach ($sys in $ROMSystems) {
+    $sysDir = Join-Path $Paths.ROMs $sys
+    if (-not (Test-Path $sysDir)) {
+        New-Item -ItemType Directory -Path $sysDir -Force | Out-Null
+        $romCreated++
+    }
+}
+
+Write-OK "Created directory structure, BIOS subdirs, and $($ROMSystems.Count) ROM system folders ($romCreated new)"
 
 # -- 2. Generate BIOS guide ----------------------------------------------------
 Write-Step "Writing BIOS reference guide..."
@@ -1318,8 +1353,7 @@ $guideText = @"
    1. Run ES-DE.exe
    2. ES-DE will auto-detect ROMs\ as the ROM directory (portable default)
    3. ES-DE will auto-find emulators in Emulators\ via es_find_rules.xml
-   4. Click "Generate directory structure" when prompted to create all
-      system ROM folders (e.g. gc\, snes\, psx\, n64\, etc.)
+   4. All 195 system ROM folders are pre-created -- no setup needed!
    5. No additional path configuration should be needed!
 
  ADDING GAMES:
@@ -1383,7 +1417,7 @@ Write-Host "================================================================" -F
 Write-Host ""
 Write-Host "  $BasePath" -ForegroundColor White
 Write-Host "    |-- ES-DE.exe             <- Launch this!" -ForegroundColor White
-Write-Host "    |-- ROMs\                 <- ES-DE generates system folders on first launch" -ForegroundColor White
+Write-Host "    |-- ROMs\                 <- 195 system folders pre-created" -ForegroundColor White
 Write-Host "    |   |-- nes\" -ForegroundColor Gray
 Write-Host "    |   |-- snes\" -ForegroundColor Gray
 Write-Host "    |   |-- psx\" -ForegroundColor Gray
@@ -1404,7 +1438,7 @@ Write-Host "    \-- Launch_ES-DE.bat      <- Quick launcher" -ForegroundColor Wh
 Write-Host ""
 Write-Host "  NEXT STEPS:" -ForegroundColor Yellow
 Write-Host "    1. Run ES-DE.exe (or Launch_ES-DE.bat)" -ForegroundColor White
-Write-Host "    2. Click 'Generate directory structure' to create ROM folders" -ForegroundColor White
+Write-Host "    2. All 195 ROM system folders are pre-created in ROMs\" -ForegroundColor White
 Write-Host "    3. Add BIOS files to Emulators\RetroArch\system\ (see BIOS_README.txt)" -ForegroundColor White
 Write-Host "    4. Add your ROM files to the matching ROMs\ subfolders" -ForegroundColor White
 Write-Host "    5. Standalone emulators are pre-configured as defaults (PS2, PS3, GC, etc.)" -ForegroundColor White

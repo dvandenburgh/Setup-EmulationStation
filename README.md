@@ -58,7 +58,7 @@ The script will now download everything automatically. This may take **20–40 m
 
 When the script finishes, open `C:\EmulationStation` in File Explorer and run **`ES-DE.exe`** (or double-click `Launch_ES-DE.bat`).
 
-On first launch, click **"Generate directory structure"** to create all the ROM subfolders.
+All 195 ROM system folders and emulator defaults are already configured — just add your ROMs and BIOS files.
 
 ---
 
@@ -89,9 +89,10 @@ Everything lands inside a single folder (`C:\EmulationStation` by default) — n
 1. **ES-DE** — the game library frontend
 2. **RetroArch** with ~80 libretro cores — handles most older systems (SNES, N64, PS1, GBA, etc.)
 3. **17 standalone emulators** for systems that need them (PS2, PS3, GameCube, Switch, and more)
-4. A pre-built `es_settings.xml` so the right emulator launches automatically per system
-5. `BIOS_README.txt` — a reference file listing every BIOS/firmware file you'll need to source yourself, with MD5 checksums
-6. `QUICK_START.txt` and `Launch_ES-DE.bat` for convenience
+4. **195 ROM system folders** pre-created so ES-DE is ready to use immediately
+5. A pre-built `es_settings.xml` so the right emulator launches automatically per system
+6. `BIOS_README.txt` — a reference file listing every BIOS/firmware file you'll need to source yourself, with MD5 checksums
+7. `QUICK_START.txt` and `Launch_ES-DE.bat` for convenience
 
 ---
 
@@ -122,7 +123,7 @@ C:\EmulationStation\
 |-- ES-DE.exe                    <- Launch this
 |-- ES-DE\
 |   \-- es_settings.xml          <- Pre-configured emulator defaults
-|-- ROMs\                        <- ES-DE generates system folders on first launch
+|-- ROMs\                        <- 195 system folders pre-created
 |   |-- gc\, snes\, psx\, ps2\, ps3\, switch\, ...
 |-- Emulators\
 |   |-- RetroArch\
@@ -155,7 +156,7 @@ C:\EmulationStation\
 \-- .downloads\                  <- Cached archives (safe to delete)
 ```
 
-ES-DE uses its own system folder names (e.g. `gc` not `gamecube`, `n3ds` not `3ds`). Click **"Generate directory structure"** on first launch to create all 150+ system folders with the correct names.
+ES-DE uses its own system folder names (e.g. `gc` not `gamecube`, `n3ds` not `3ds`). All 195 system folders are pre-created by the script — no first-launch setup required.
 
 ---
 
@@ -253,10 +254,9 @@ See `BIOS_README.txt` for the complete list with MD5 checksums.
 ## Post-Install Checklist
 
 1. Run `ES-DE.exe` (or `Launch_ES-DE.bat`)
-2. Click **"Generate directory structure"** to create ROM folders
-3. Add BIOS files where needed (see table above)
-4. Drop ROM files into the matching subfolder inside `ROMs\`
-5. Standalone emulators are already set as defaults — no manual configuration needed
+2. Add BIOS files where needed (see table above)
+3. Drop ROM files into the matching subfolder inside `ROMs\`
+4. Standalone emulators are already set as defaults — no manual configuration needed
 
 ### System-specific notes
 
@@ -270,7 +270,7 @@ See `BIOS_README.txt` for the complete list with MD5 checksums.
 
 ## Supported Systems
 
-ES-DE supports 150+ game systems. Key systems by manufacturer:
+ES-DE supports 195 game systems. Key systems by manufacturer:
 
 **Nintendo** -- NES, SNES, N64, GameCube, Wii, Wii U, Switch, Game Boy, GBC, GBA, DS, 3DS, FDS, Virtual Boy, Pokemon Mini
 
