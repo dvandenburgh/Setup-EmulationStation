@@ -2,57 +2,116 @@
 
 A single PowerShell script that bootstraps a complete [ES-DE (EmulationStation Desktop Edition)](https://es-de.org) portable install on Windows 11 with RetroArch, ~80 libretro cores, and 17 standalone emulators -- all pre-configured so games launch with the right emulator out of the box.
 
-## Quick Start
+---
 
-```powershell
-git clone https://github.com/dvandenburgh/Setup-EmulationStation.git
-cd Setup-EmulationStation
-.\Setup-EmulationStation.ps1
-```
+## How to Install
 
-If PowerShell blocks the script:
+### Step 1 — Download the script
+
+You don't need Git or any special tools. Just download the script directly:
+
+1. Click this link: **[Download Setup-EmulationStation.ps1](https://raw.githubusercontent.com/dvandenburgh/Setup-EmulationStation/main/Setup-EmulationStation.ps1)**
+2. Your browser may ask what to do with the file — choose **Save** (or **Save As**)
+3. Save it somewhere easy to find, like your **Desktop** or **Downloads** folder
+
+> **Tip:** If the file saves as `Setup-EmulationStation.ps1.txt`, rename it and remove the `.txt` at the end so it ends in `.ps1` only.
+
+---
+
+### Step 2 — Open PowerShell as Administrator
+
+The script downloads and installs several programs, so it needs to run with administrator privileges.
+
+1. Press the **Windows key**, type `PowerShell`
+2. Right-click **Windows PowerShell** in the results
+3. Click **Run as administrator**
+4. Click **Yes** if Windows asks for permission
+
+---
+
+### Step 3 — Run the script
+
+In the PowerShell window, paste the following two commands one at a time, pressing **Enter** after each.
+
+**First**, allow the script to run (Windows blocks downloaded scripts by default):
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\Setup-EmulationStation.ps1
 ```
 
-Default install path is `C:\EmulationStation`. Change it with `-BasePath`:
+**Then**, run the script. Replace the path below with wherever you saved the file in Step 1:
 
 ```powershell
-.\Setup-EmulationStation.ps1 -BasePath "D:\EmulationStation"
+& "$env:USERPROFILE\Downloads\Setup-EmulationStation.ps1"
+```
+
+> **Saved it somewhere else?** Just change the path. For example, if it's on your Desktop:
+> ```powershell
+> & "$env:USERPROFILE\Desktop\Setup-EmulationStation.ps1"
+> ```
+
+The script will now download everything automatically. This may take **20–40 minutes** depending on your internet speed. You'll see progress as it goes. Leave the window open until it finishes.
+
+---
+
+### Step 4 — Launch ES-DE
+
+When the script finishes, open `C:\EmulationStation` in File Explorer and run **`ES-DE.exe`** (or double-click `Launch_ES-DE.bat`).
+
+On first launch, click **"Generate directory structure"** to create all the ROM subfolders.
+
+---
+
+### Optional: Install to a different drive
+
+By default everything goes to `C:\EmulationStation`. If you'd rather install to a different drive (recommended if your C: drive is low on space — the full install is 5–10 GB), add `-BasePath` when you run the script in Step 3:
+
+```powershell
+& "$env:USERPROFILE\Downloads\Setup-EmulationStation.ps1" -BasePath "D:\EmulationStation"
 ```
 
 ---
 
-## What the Script Does
+### Troubleshooting
 
-1. Downloads ES-DE portable from GitLab and extracts it to the install root
-2. Installs the Visual C++ x64 Redistributable (required by several emulators)
-3. Downloads RetroArch 1.20.0 portable + ~80 libretro cores from the nightly buildbot
-4. Downloads 17 standalone emulators into `Emulators\` where ES-DE auto-discovers them
-5. Pre-creates `ES-DE/es_settings.xml` with correct standalone emulator defaults for 14 systems
-6. Creates an empty `ROMs\` directory (ES-DE generates system subfolders on first launch)
-7. Generates `BIOS_README.txt` with every required firmware file and MD5 checksums
-8. Generates `QUICK_START.txt` and `Launch_ES-DE.bat`
+**"Running scripts is disabled on this system"** — Make sure you ran the `Set-ExecutionPolicy` command in Step 3 first, and that PowerShell is open as Administrator.
 
-The script is **idempotent** -- safe to re-run. Already-downloaded archives and installed emulators are detected and skipped. Existing ROM and BIOS files are never touched.
+**A download fails or times out** — The script is safe to re-run. It skips anything already downloaded and picks up where it left off. Just run the same command again.
+
+**GitHub rate limit error** — The script makes several calls to GitHub's API. If you see a rate limit message, wait 10–15 minutes and re-run.
+
+---
+
+## What the Script Installs
+
+Everything lands inside a single folder (`C:\EmulationStation` by default) — nothing is scattered around your system. Delete the folder to uninstall completely.
+
+1. **ES-DE** — the game library frontend
+2. **RetroArch** with ~80 libretro cores — handles most older systems (SNES, N64, PS1, GBA, etc.)
+3. **17 standalone emulators** for systems that need them (PS2, PS3, GameCube, Switch, and more)
+4. A pre-built `es_settings.xml` so the right emulator launches automatically per system
+5. `BIOS_README.txt` — a reference file listing every BIOS/firmware file you'll need to source yourself, with MD5 checksums
+6. `QUICK_START.txt` and `Launch_ES-DE.bat` for convenience
+
+---
 
 ## Parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `-BasePath` | `C:\EmulationStation` | Root directory for the entire installation |
-| `-SkipDownloads` | off | Create directory structure and reference files only |
-| `-RetroArchOnly` | off | Download RetroArch + cores, skip standalone emulators |
+| `-SkipDownloads` | off | Create directory structure and config files only, no downloads |
+| `-RetroArchOnly` | off | Download RetroArch + cores only, skip standalone emulators |
+
+---
 
 ## Requirements
 
 - Windows 10 or 11
-- PowerShell 5.1+ (ships with Windows)
+- PowerShell 5.1+ (already installed on all modern Windows machines)
 - Internet connection
-- ~5-10 GB free disk space
-- Administrator recommended (for 7-Zip and VC++ Redist auto-install)
+- ~5–10 GB free disk space
+- Administrator rights recommended
 
 ---
 
@@ -123,7 +182,7 @@ The script pre-creates `ES-DE/es_settings.xml` with the correct `AlternativeEmul
 
 All other systems default to RetroArch with the appropriate libretro core.
 
-**Per-game overrides are enabled.** To use a different emulator for a specific game: highlight the game, press Select, choose Edit This Game's Metadata, then Alternative Emulator.
+**Per-game overrides are supported.** To use a different emulator for a specific game: highlight it, press Select → Edit This Game's Metadata → Alternative Emulator.
 
 ---
 
@@ -191,13 +250,13 @@ See `BIOS_README.txt` for the complete list with MD5 checksums.
 
 ---
 
-## Post-Install
+## Post-Install Checklist
 
 1. Run `ES-DE.exe` (or `Launch_ES-DE.bat`)
 2. Click **"Generate directory structure"** to create ROM folders
 3. Add BIOS files where needed (see table above)
-4. Add ROM files to the matching `ROMs\` subfolders
-5. Standalone emulators are already configured as defaults -- no manual selection needed
+4. Drop ROM files into the matching subfolder inside `ROMs\`
+5. Standalone emulators are already set as defaults — no manual configuration needed
 
 ### System-specific notes
 
@@ -244,6 +303,8 @@ ES-DE supports 150+ game systems. Key systems by manufacturer:
 - **RetroArch cores**: Some nightly cores may fail to download -- this is normal for cores not yet built for the latest nightly.
 - **Large downloads**: MAME and RPCS3 use a .NET WebClient fallback if `Invoke-WebRequest` times out.
 - **Pinned versions**: Dolphin (v2412), ScummVM (v2.9.1), and MAME (v0.286) use pinned direct URLs. Update these when new versions release.
+
+---
 
 ## License
 
