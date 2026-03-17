@@ -2,7 +2,7 @@
 
 A single PowerShell script that bootstraps a complete [ES-DE (EmulationStation Desktop Edition)](https://es-de.org) portable install on Windows 11, targeting full parity with the [Batocera](https://batocera.org) x86_64 system list.
 
-One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standalone emulators (including Nintendo Switch), and a detailed BIOS reference guide with MD5 checksums — all laid out exactly where ES-DE portable expects to find them.
+One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standalone emulators (including Nintendo Switch), a detailed BIOS reference guide with MD5 checksums, and pre-configured emulator defaults so standalone emulators are used where they should be.
 
 ---
 
@@ -11,8 +11,10 @@ One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standa
 | Step | Description |
 |------|-------------|
 | **ES-DE portable** | Downloads the latest ES-DE portable release from GitLab and extracts it so `ES-DE.exe` sits at the install root. |
-| **RetroArch** | Downloads RetroArch portable from the libretro buildbot, then pulls ~80 cores from the nightly channel covering every system from Atari 2600 to Sharp X68000. |
+| **VC++ Redist** | Installs the Visual C++ x64 Redistributable if not already present (required by several emulators). |
+| **RetroArch** | Downloads RetroArch 1.20.0 portable from the libretro buildbot, then pulls ~80 cores from the nightly channel. |
 | **Standalone emulators** | Downloads 16 standalone emulators from their latest GitHub/GitLab releases into `Emulators\` where ES-DE auto-discovers them. |
+| **Emulator defaults** | Pre-creates `ES-DE/es_settings.xml` with standalone emulators set as the system-level default for PS2, PS3, GameCube, Wii, Switch, PSX, PSP, NDS, Dreamcast, Xbox, Xbox 360, Wii U, and PS Vita. Per-game overrides remain enabled. |
 | **ROM directories** | Creates an empty `ROMs\` directory. On first launch, ES-DE generates correctly named subfolders for all 150+ supported systems via its built-in directory generator. |
 | **BIOS guide** | Generates `BIOS_README.txt` listing every required and optional firmware file with MD5 hashes. |
 | **Quick-start guide** | Generates `QUICK_START.txt` with first-launch instructions. |
@@ -24,7 +26,7 @@ One command gives you the frontend, RetroArch with ~80 libretro cores, 16 standa
 - **PowerShell 5.1+** (ships with Windows)
 - **Internet connection** for downloading emulators and cores
 - **~5-10 GB free disk space** depending on which emulators are downloaded
-- Running as **Administrator** is recommended (needed for 7-Zip auto-install)
+- Running as **Administrator** is recommended (needed for 7-Zip and VC++ Redist auto-install)
 
 ## Quick Start
 
@@ -76,6 +78,8 @@ The install root **is** the ES-DE portable root. ES-DE auto-detects `Emulators\`
 ```
 C:\EmulationStation\
 |-- ES-DE.exe                       <- Launch this
+|-- ES-DE\                          <- ES-DE config and settings
+|   \-- es_settings.xml             <- Pre-configured emulator defaults
 |-- ROMs\                           <- ES-DE generates system folders on first launch
 |   |-- gc\                         <- GameCube (ES-DE names, NOT Batocera names)
 |   |-- snes\
@@ -83,7 +87,7 @@ C:\EmulationStation\
 |   |-- switch\
 |   \-- ...                         <- 150+ system folders created by ES-DE
 |-- Emulators\                      <- ES-DE searches here via es_find_rules.xml
-|   |-- RetroArch\                  <- RetroArch portable
+|   |-- RetroArch\                  <- RetroArch 1.20.0 portable
 |   |   |-- retroarch.exe
 |   |   |-- cores\                  <- ~80 libretro core DLLs
 |   |   \-- system\                 <- BIOS / firmware files go here
@@ -93,6 +97,7 @@ C:\EmulationStation\
 |   |       \-- keropi\             <- X68000 subfolder
 |   |-- Dolphin\                    <- GameCube / Wii
 |   |-- PCSX2\                      <- PlayStation 2
+|   |   \-- bios\                   <- PS2 BIOS files go here
 |   |-- RPCS3\                      <- PlayStation 3
 |   |-- duckstation\                <- PlayStation 1
 |   |-- PPSSPP\                     <- PSP
@@ -115,7 +120,7 @@ C:\EmulationStation\
 
 ## Standalone Emulators
 
-All 16 are downloaded automatically from their official GitHub/GitLab releases:
+All 16 are downloaded automatically from their official sources:
 
 | Emulator | System(s) | Source |
 |----------|-----------|--------|
@@ -133,9 +138,33 @@ All 16 are downloaded automatically from their official GitHub/GitLab releases:
 | mGBA | GBA, GB, GBC | mgba-emu/mgba |
 | Flycast | Dreamcast, NAOMI, Atomiswave | flyinghead/flycast |
 | Vita3K | PS Vita | Vita3K/Vita3K |
-| MAME | Arcade | mamedev.org (GitHub releases) |
+| MAME | Arcade | mamedev/mame |
 | DOSBox Staging | MS-DOS | dosbox-staging/dosbox-staging |
 | ScummVM | Adventure games | scummvm.org |
+
+## Emulator Configuration
+
+The script pre-creates `ES-DE/es_settings.xml` with standalone emulators set as the **system-level default** for these systems:
+
+| System | Default Emulator |
+|--------|-----------------|
+| PlayStation 2 | PCSX2 (Standalone) |
+| PlayStation 3 | RPCS3 |
+| PlayStation 1 | DuckStation (Standalone) |
+| GameCube | Dolphin (Standalone) |
+| Wii | Dolphin (Standalone) |
+| Wii U | Cemu |
+| Nintendo Switch | Ryujinx |
+| PSP | PPSSPP (Standalone) |
+| Nintendo DS | melonDS (Standalone) |
+| Dreamcast | Flycast (Standalone) |
+| Xbox | xemu |
+| Xbox 360 | Xenia |
+| PS Vita | Vita3K (Standalone) |
+
+All other systems default to RetroArch with the appropriate core.
+
+**Per-game alternative emulators are enabled** -- you can override the default for any individual game via Select > Edit This Game's Metadata > Alternative Emulator.
 
 ## Supported Systems
 
@@ -220,7 +249,7 @@ Cave Story (NXEngine), EasyRPG (RPG Maker 2000/2003), OpenBOR, Solarus, Lutro, P
 
 ## BIOS Files
 
-The generated `BIOS_README.txt` (in both the install root and `Emulators\RetroArch\system\`) lists every BIOS file you may need, organised by system, with MD5 checksums for verification. **You must legally obtain these from hardware you own.** Key systems requiring BIOS files:
+The generated `BIOS_README.txt` (in both the install root and `Emulators\RetroArch\system\`) lists every BIOS file you may need with MD5 checksums. **You must legally obtain these from hardware you own.** Key systems:
 
 - **PlayStation** -- `scph5501.bin` (USA), `scph5502.bin` (EU), `scph5500.bin` (JP) -- place in `Emulators\RetroArch\system\`
 - **PlayStation 2** -- Any valid SCPH dump placed in `Emulators\PCSX2\bios\`
@@ -233,24 +262,31 @@ The generated `BIOS_README.txt` (in both the install root and `Emulators\RetroAr
 
 See `BIOS_README.txt` for the complete list.
 
-## Post-Install Configuration
+## Post-Install
 
 1. Run `ES-DE.exe` (or `Launch_ES-DE.bat`).
-2. On first launch, ES-DE will show a dialog because no games are found yet. Click **"Generate directory structure"** to create all system ROM folders with the correct names.
-3. Add your legally obtained ROM files to the matching `ROMs\` subfolders. **Important:** ES-DE uses its own folder names which differ from Batocera (e.g. `gc` not `gamecube`, `n3ds` not `3ds`, `genesis` not `megadrive`). The generated folders have the correct names.
+2. On first launch, click **"Generate directory structure"** to create all system ROM folders.
+3. Add your legally obtained ROM files to the matching `ROMs\` subfolders. **Important:** ES-DE uses its own folder names (e.g. `gc` not `gamecube`, `n3ds` not `3ds`). The generated folders have the correct names.
 4. Add BIOS files where needed (see `BIOS_README.txt`).
-5. Optionally, create a free [ScreenScraper](https://www.screenscraper.fr/) account and use ES-DE's built-in scraper to download box art, screenshots, and metadata.
+5. Standalone emulators are already configured as defaults -- no manual emulator selection needed.
+6. Optionally, create a free [ScreenScraper](https://www.screenscraper.fr/) account and scrape your collection for artwork.
+
+### PS3 Games (RPCS3)
+
+PS3 games work differently from other systems. You can either place `.pkg` files in `ROMs\ps3\` and let ES-DE launch them through RPCS3, or install games directly in RPCS3 via File > Install .pkg. Make sure firmware is installed first (RPCS3 > File > Install Firmware).
 
 ## Re-running the Script
 
-The script is safe to re-run. Already-downloaded archives in `.downloads\` are detected and skipped, so subsequent runs only fetch what's missing. Existing ROM and BIOS files are never modified or deleted.
+The script is safe to re-run. Already-downloaded archives in `.downloads\` are detected and skipped, emulators with their expected `.exe` already in place are skipped, and existing ROM/BIOS files are never modified or deleted.
 
 ## Notes
 
 - **7-Zip** is auto-installed if needed (some emulators ship as `.7z`).
-- **GitHub API rate limits** apply (~60 unauthenticated requests/hour). If you hit limits mid-run, wait a few minutes and re-run -- completed downloads are skipped.
-- Some RetroArch cores from the nightly buildbot may fail to download -- this is expected for cores not yet built for the latest nightly. RetroArch will still function with the cores that succeed.
+- **VC++ Redistributable** is auto-installed (required by Dolphin, PCSX2, and others).
+- **GitHub API rate limits** apply (~60 unauthenticated requests/hour). If you hit limits mid-run, wait a few minutes and re-run.
+- Some RetroArch cores from the nightly buildbot may fail to download -- this is expected for cores not yet built for the latest nightly.
 - ES-DE is hosted on **GitLab** (not GitHub). The script queries the GitLab API with a hardcoded fallback URL.
+- Large downloads (MAME, RPCS3) use a .NET WebClient fallback if `Invoke-WebRequest` fails.
 
 ## License
 

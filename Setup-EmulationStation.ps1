@@ -34,7 +34,7 @@
 
 .NOTES
     Author  : Claude (Anthropic) + David
-    Version : 1.1.0
+    Version : 1.2.0
     Date    : 2026-03-16
     License : MIT -- use at your own risk
 #>
@@ -158,6 +158,30 @@ function Download-File {
     }
 }
 
+
+function Install-LatestVCRedist {
+    param([string]$DownloadsDir)
+
+    $vcUrl = "https://aka.ms/vc14/vc_redist.x64.exe"
+    $vcExe = Join-Path $DownloadsDir "vc_redist.x64.exe"
+
+    try {
+        Write-Info "Installing Microsoft Visual C++ x64 Redistributable..."
+        Invoke-WebRequest -Uri $vcUrl -OutFile $vcExe -UseBasicParsing -TimeoutSec 300 -MaximumRedirection 10
+        $proc = Start-Process -FilePath $vcExe -ArgumentList "/install", "/quiet", "/norestart" -PassThru -Wait
+        if ($proc.ExitCode -in 0, 1638, 3010) {
+            Write-OK "Visual C++ x64 Redistributable installed or already present"
+            return $true
+        }
+        Write-Warning "Visual C++ x64 Redistributable installer exited with code $($proc.ExitCode)"
+        return $false
+    }
+    catch {
+        Write-Warning "Could not install Visual C++ x64 Redistributable automatically: $_"
+        return $false
+    }
+}
+
 function Extract-Archive {
     param(
         [string]$Archive,
@@ -182,7 +206,14 @@ function Extract-Archive {
             & $7z x "$Archive" -o"$Destination" -y | Out-Null
         }
         else {
-            Expand-Archive -Path $Archive -DestinationPath $Destination -Force
+            try {
+                Expand-Archive -Path $Archive -DestinationPath $Destination -Force
+            }
+            catch {
+                $7z = Get-7ZipPath
+                if (-not $7z) { throw }
+                & $7z x "$Archive" -o"$Destination" -y | Out-Null
+            }
         }
         Write-OK "Extracted $Description"
         return $true
@@ -238,6 +269,260 @@ function Flatten-SingleSubfolder {
         if (@(Get-ChildItem -Path $subfolder -Force).Count -eq 0) {
             Remove-Item -Path $subfolder -Force
         }
+    }
+}
+
+
+
+function Move-DirectoryContents {
+    param(
+        [string]$SourceDir,
+        [string]$DestinationDir
+    )
+    if (-not (Test-Path $SourceDir)) { return }
+    Ensure-Dir $DestinationDir
+
+    Get-ChildItem -Path $SourceDir -Force | ForEach-Object {
+        $target = Join-Path $DestinationDir $_.Name
+        if ($_.PSIsContainer) {
+            if (-not (Test-Path $target)) {
+                Move-Item -Path $_.FullName -Destination $DestinationDir -Force
+            }
+            else {
+                Move-DirectoryContents -SourceDir $_.FullName -DestinationDir $target
+                if (@(Get-ChildItem -Path $_.FullName -Force -ErrorAction SilentlyContinue).Count -eq 0) {
+                    Remove-Item -Path $_.FullName -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+        else {
+            if (-not (Test-Path $target)) {
+                Move-Item -Path $_.FullName -Destination $DestinationDir -Force
+            }
+        }
+    }
+}
+
+function Repair-StandaloneInstall {
+    param(
+        [string]$InstallDir,
+        [string]$ExpectedExe,
+        [string]$Name = "emulator"
+    )
+
+    if (-not (Test-Path $InstallDir)) { return $false }
+
+    # Flatten a few times in case the archive layout changed and has multiple wrappers.
+    for ($i = 0; $i -lt 3; $i++) {
+        Flatten-SingleSubfolder $InstallDir
+    }
+
+    $rootExe = Join-Path $InstallDir $ExpectedExe
+    if (Test-Path $rootExe) {
+        return $true
+    }
+
+    $searchNames = @($ExpectedExe)
+    if ($Name -eq "PCSX2") {
+        $searchNames += @("pcsx2-avx2-qt.exe", "pcsx2-sse4-qt.exe")
+    }
+
+    $foundExe = Find-ExeMatchRecursively -RootDir $InstallDir -Names $searchNames
+
+    if (-not $foundExe) {
+        Write-Warning "$Name extracted, but $ExpectedExe was not found under $InstallDir"
+        return $false
+    }
+
+    $exeParent = Split-Path -Parent $foundExe.FullName
+    if ($exeParent -ne $InstallDir) {
+        Write-Info "Repairing $Name layout so ES-DE can discover $ExpectedExe"
+        Move-DirectoryContents -SourceDir $exeParent -DestinationDir $InstallDir
+    }
+
+    for ($i = 0; $i -lt 2; $i++) {
+        Flatten-SingleSubfolder $InstallDir
+    }
+
+    return (Test-Path $rootExe)
+}
+
+function Reset-DirectoryContents {
+    param([string]$Dir)
+    if (-not (Test-Path $Dir)) { return }
+    Get-ChildItem -Path $Dir -Force -ErrorAction SilentlyContinue | ForEach-Object {
+        Remove-Item -Path $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Archive-ContainsExpectedExe {
+    param(
+        [string]$ArchivePath,
+        [string]$ExpectedExe
+    )
+
+    if (-not (Test-Path $ArchivePath)) { return $false }
+
+    try {
+        if ($ArchivePath -match '\.zip$') {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($ArchivePath)
+            try {
+                return ($zip.Entries | Where-Object { $_.FullName -match ('(^|/|\\)' + [regex]::Escape($ExpectedExe) + '$') } | Select-Object -First 1) -ne $null
+            }
+            finally {
+                $zip.Dispose()
+            }
+        }
+        else {
+            $sevenZip = Get-7ZipPath
+            if (-not $sevenZip) { return $false }
+            $listing = & $sevenZip l -ba "$ArchivePath" 2>$null
+            if (-not $listing) { return $false }
+            $pattern = '(?i)(^|[\\/])' + [regex]::Escape($ExpectedExe) + '$'
+            return ($listing | Where-Object { $_ -match $pattern } | Select-Object -First 1) -ne $null
+        }
+    }
+    catch {
+        return $false
+    }
+}
+
+function Find-ExeMatchRecursively {
+    param(
+        [string]$RootDir,
+        [string[]]$Names
+    )
+
+    if (-not (Test-Path $RootDir)) { return $null }
+    foreach ($name in $Names) {
+        $found = Get-ChildItem -Path $RootDir -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -ieq $name } |
+            Select-Object -First 1
+        if ($found) { return $found }
+    }
+
+    foreach ($name in $Names) {
+        $stem = [System.IO.Path]::GetFileNameWithoutExtension($name)
+        $found = Get-ChildItem -Path $RootDir -Recurse -File -Filter "$stem*.exe" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($found) { return $found }
+    }
+
+    return $null
+}
+
+function Ensure-ArchiveProducesExe {
+    param(
+        [string]$ArchivePath,
+        [string]$InstallDir,
+        [string]$ExpectedExe,
+        [string]$Name = "emulator"
+    )
+
+    if (-not (Test-Path $ArchivePath)) {
+        Write-Warning "$Name archive missing: $ArchivePath"
+        return $false
+    }
+
+    Reset-DirectoryContents $InstallDir
+    if (-not (Extract-Archive -Archive $ArchivePath -Destination $InstallDir -Description $Name)) {
+        return $false
+    }
+
+    return (Repair-StandaloneInstall -InstallDir $InstallDir -ExpectedExe $ExpectedExe -Name $Name)
+}
+
+
+function Write-ESDEEmulatorDefaults {
+    param([string]$BaseDir)
+
+    # ES-DE stores settings in ES-DE\es_settings.xml (portable mode).
+    # We pre-create this file with system-level alternative emulator defaults
+    # so standalone emulators are used instead of RetroArch cores for systems
+    # where the core doesn't exist or the standalone is vastly better.
+    #
+    # Per-game alternative emulators remain ENABLED so users can override.
+
+    $esdeDir = Join-Path $BaseDir "ES-DE"
+    Ensure-Dir $esdeDir
+
+    $settingsFile = Join-Path $esdeDir "es_settings.xml"
+
+    # System -> emulator label mappings (must match es_systems.xml command labels)
+    # These are the labels ES-DE uses in its bundled Windows es_systems.xml
+    $defaults = [ordered]@{
+        "ps2"       = "PCSX2 (Standalone)"
+        "ps3"       = "RPCS3"
+        "gc"        = "Dolphin (Standalone)"
+        "wii"       = "Dolphin (Standalone)"
+        "wiiu"      = "Cemu"
+        "switch"    = "Ryujinx"
+        "psx"       = "DuckStation (Standalone)"
+        "psp"       = "PPSSPP (Standalone)"
+        "nds"       = "melonDS (Standalone)"
+        "dreamcast" = "Flycast (Standalone)"
+        "xbox"      = "xemu"
+        "xbox360"   = "Xenia"
+        "psvita"    = "Vita3K (Standalone)"
+    }
+
+    if (Test-Path $settingsFile) {
+        # Settings file exists (ES-DE has been launched before) -- merge our defaults
+        try {
+            $xml = [xml](Get-Content -Path $settingsFile -Raw -Encoding UTF8)
+            $changed = $false
+
+            # Ensure per-game alternative emulators are enabled
+            $perGame = $xml.SelectSingleNode('//bool[@name="AlternativeEmulatorPerGame"]')
+            if ($perGame) {
+                if ($perGame.value -ne "true") {
+                    $perGame.value = "true"
+                    $changed = $true
+                }
+            }
+
+            foreach ($sys in $defaults.Keys) {
+                $settingName = "AlternativeEmulator_$sys"
+                $node = $xml.SelectSingleNode("//string[@name='$settingName']")
+                if (-not $node) {
+                    # Add the setting
+                    $newNode = $xml.CreateElement("string")
+                    $newNode.SetAttribute("name", $settingName)
+                    $newNode.SetAttribute("value", $defaults[$sys])
+                    $xml.DocumentElement.AppendChild($newNode) | Out-Null
+                    $changed = $true
+                }
+                # Don't overwrite if user already set a preference
+            }
+
+            if ($changed) {
+                $xml.Save($settingsFile)
+                Write-OK "Updated ES-DE settings with standalone emulator defaults"
+            }
+            else {
+                Write-Info "ES-DE settings already configured"
+            }
+        }
+        catch {
+            Write-Warning "Could not update ES-DE settings: $_"
+        }
+    }
+    else {
+        # First install -- create a minimal es_settings.xml with our defaults
+        $lines = @()
+        $lines += '<?xml version="1.0"?>'
+        $lines += '<settings>'
+        $lines += '  <bool name="AlternativeEmulatorPerGame" value="true" />'
+        foreach ($sys in $defaults.Keys) {
+            $emuLabel = $defaults[$sys]
+            $lines += "  <string name=`"AlternativeEmulator_$sys`" value=`"$emuLabel`" />"
+        }
+        $lines += '</settings>'
+
+        $lines -join "`r`n" | Out-File -FilePath $settingsFile -Encoding UTF8 -Force
+        Write-OK "Created ES-DE settings with standalone emulator defaults"
+        Write-Info "Systems configured: $($defaults.Keys -join ', ')"
     }
 }
 
@@ -349,19 +634,24 @@ $StandaloneEmulators = @(
     @{
         Name      = "Dolphin"
         Folder    = "Dolphin"
+        PrimaryExe= "Dolphin.exe"
         DirectUrl = "https://dl.dolphin-emu.org/releases/2412/dolphin-2412-x64.7z"
         Notes     = "GameCube and Wii emulator"
     },
     @{
         Name      = "PCSX2"
         Folder    = "PCSX2"
+        PrimaryExe= "pcsx2-qt.exe"
+        DirectUrl = "https://github.com/PCSX2/pcsx2/releases/download/v2.4.0/pcsx2-v2.4.0-windows-x64-Qt.7z"
+        DirectExt = ".7z"
         Repo      = "PCSX2/pcsx2"
-        Pattern   = "pcsx2.*windows.*x64.*\.7z$|pcsx2.*win.*64.*\.zip$"
+        Pattern   = "pcsx2.*windows.*x64.*qt.*\.7z$|pcsx2.*windows.*x64.*qt.*\.zip$|pcsx2.*win.*64.*qt.*\.7z$|pcsx2.*win.*64.*qt.*\.zip$"
         Notes     = "PlayStation 2 emulator"
     },
     @{
         Name      = "RPCS3"
         Folder    = "RPCS3"
+        PrimaryExe= "rpcs3.exe"
         Repo      = "RPCS3/rpcs3-binaries-win"
         Pattern   = "rpcs3.*win64.*\.7z$"
         Notes     = "PlayStation 3 emulator -- requires PS3 firmware (PS3UPDAT.PUP)"
@@ -369,6 +659,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "DuckStation"
         Folder    = "duckstation"
+        PrimaryExe= "duckstation-qt-x64-ReleaseLTCG.exe"
         Repo      = "stenzek/duckstation"
         Pattern   = "duckstation.*windows.*x64.*\.zip$"
         Notes     = "PlayStation 1 emulator (high accuracy)"
@@ -376,6 +667,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "PPSSPP"
         Folder    = "PPSSPP"
+        PrimaryExe= "PPSSPPWindows64.exe"
         Repo      = "hrydgard/ppsspp"
         Pattern   = "ppsspp.*windows.*64.*\.zip$|PPSSPPWindows64.*\.zip$"
         Notes     = "PlayStation Portable emulator"
@@ -383,6 +675,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "Cemu"
         Folder    = "Cemu"
+        PrimaryExe= "Cemu.exe"
         Repo      = "cemu-project/Cemu"
         Pattern   = "cemu.*windows.*x64.*\.zip$"
         Notes     = "Wii U emulator"
@@ -390,6 +683,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "Xemu"
         Folder    = "xemu"
+        PrimaryExe= "xemu.exe"
         Repo      = "xemu-project/xemu"
         Pattern   = "xemu.*win.*\.zip$"
         Notes     = "Original Xbox emulator -- requires MCPX boot ROM + flash BIOS"
@@ -397,6 +691,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "Xenia Canary"
         Folder    = "Xenia"
+        PrimaryExe= "xenia_canary.exe"
         Repo      = "xenia-canary/xenia-canary-releases"
         Pattern   = "xenia_canary.*\.zip$"
         Notes     = "Xbox 360 emulator (experimental)"
@@ -404,6 +699,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "melonDS"
         Folder    = "melonDS"
+        PrimaryExe= "melonDS.exe"
         Repo      = "melonDS-emu/melonDS"
         Pattern   = "melonDS.*win.*x64.*\.zip$|melonDS.*windows.*\.zip$"
         Notes     = "Nintendo DS emulator"
@@ -411,6 +707,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "mGBA"
         Folder    = "mGBA"
+        PrimaryExe= "mGBA.exe"
         Repo      = "mgba-emu/mgba"
         Pattern   = "mGBA.*win.*64.*\.7z$|mGBA.*windows.*\.zip$"
         Notes     = "Game Boy / GBC / GBA emulator"
@@ -418,6 +715,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "DOSBox Staging"
         Folder    = "dosbox-staging"
+        PrimaryExe= "dosbox.exe"
         Repo      = "dosbox-staging/dosbox-staging"
         Pattern   = "dosbox-staging.*windows.*x86_64.*\.zip$|dosbox-staging.*win.*\.zip$"
         Notes     = "Enhanced DOSBox fork for DOS gaming"
@@ -425,12 +723,14 @@ $StandaloneEmulators = @(
     @{
         Name      = "ScummVM"
         Folder    = "ScummVM"
+        PrimaryExe= "scummvm.exe"
         DirectUrl = "https://downloads.scummvm.org/frs/scummvm/2.9.1/scummvm-2.9.1-win32-x86_64.zip"
         Notes     = "Adventure game engine"
     },
     @{
         Name      = "Flycast"
         Folder    = "Flycast"
+        PrimaryExe= "flycast.exe"
         Repo      = "flyinghead/flycast"
         Pattern   = "flycast.*win.*x64.*\.zip$|flycast.*windows.*\.zip$"
         Notes     = "Dreamcast / NAOMI / Atomiswave emulator"
@@ -438,6 +738,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "Vita3K"
         Folder    = "Vita3K"
+        PrimaryExe= "Vita3K.exe"
         Repo      = "Vita3K/Vita3K"
         Pattern   = "Vita3K.*windows.*\.zip$|windows.*\.zip$"
         Notes     = "PlayStation Vita emulator (experimental)"
@@ -445,6 +746,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "MAME"
         Folder    = "MAME"
+        PrimaryExe= "MAME.exe"
         Repo      = "mamedev/mame"
         Pattern   = "mame.*b_x64\.exe$"
         Notes     = "Multi-Arcade Machine Emulator (self-extracting archive)"
@@ -452,6 +754,7 @@ $StandaloneEmulators = @(
     @{
         Name      = "Ryujinx (Ryubing)"
         Folder    = "Ryujinx"
+        PrimaryExe= "Ryujinx.exe"
         Repo      = "Kenji-NX/Releases"
         Pattern   = "ryujinx.*win.*x64.*\.zip$|.*[Ww]indows.*[Aa]rtifact.*\.zip$"
         Notes     = "Nintendo Switch emulator -- requires prod.keys and firmware from your Switch"
@@ -764,24 +1067,41 @@ else {
     Write-Info "Extract the portable ZIP so ES-DE.exe is at: $BasePath\ES-DE.exe"
 }
 
+# -- 4b. Install runtime prerequisites -----------------------------------------
+Install-LatestVCRedist -DownloadsDir $Paths.Downloads | Out-Null
+
 # -- 5. Download RetroArch -----------------------------------------------------
 Write-Step "Downloading RetroArch into Emulators\RetroArch..."
 
-$raUrl = "https://buildbot.libretro.com/stable/1.19.1/windows/x86_64/RetroArch.7z"
-$raFallback = "https://buildbot.libretro.com/stable/1.19.1/windows/x86_64/RetroArch.zip"
+$raUrl = "https://buildbot.libretro.com/stable/1.20.0/windows/x86_64/RetroArch.7z"
+$raFallback = "https://buildbot.libretro.com/stable/1.20.0/windows/x86_64/RetroArch.zip"
 $raDl = "$($Paths.Downloads)\retroarch.7z"
 $raDlZip = "$($Paths.Downloads)\retroarch.zip"
+$raExe = Join-Path $Paths.RetroArch "retroarch.exe"
 
-$raDownloaded = Download-File -Url $raUrl -Destination $raDl -Description "RetroArch (7z)"
-if ($raDownloaded) {
-    Extract-Archive -Archive $raDl -Destination $Paths.RetroArch -Description "RetroArch"
-    Flatten-SingleSubfolder $Paths.RetroArch
+$raInstalled = $false
+if (Test-Path $raExe) {
+    Write-Skip "RetroArch already installed"
+    $raInstalled = $true
 }
 else {
-    $raDownloaded = Download-File -Url $raFallback -Destination $raDlZip -Description "RetroArch (zip)"
+    if (Test-Path $raDl) { Remove-Item $raDl -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $raDlZip) { Remove-Item $raDlZip -Force -ErrorAction SilentlyContinue }
+
+    $raDownloaded = Download-File -Url $raUrl -Destination $raDl -Description "RetroArch (7z)"
     if ($raDownloaded) {
-        Extract-Archive -Archive $raDlZip -Destination $Paths.RetroArch -Description "RetroArch"
-        Flatten-SingleSubfolder $Paths.RetroArch
+        $raInstalled = Ensure-ArchiveProducesExe -ArchivePath $raDl -InstallDir $Paths.RetroArch -ExpectedExe "retroarch.exe" -Name "RetroArch"
+    }
+
+    if (-not $raInstalled) {
+        $raDownloaded = Download-File -Url $raFallback -Destination $raDlZip -Description "RetroArch (zip)"
+        if ($raDownloaded) {
+            $raInstalled = Ensure-ArchiveProducesExe -ArchivePath $raDlZip -InstallDir $Paths.RetroArch -ExpectedExe "retroarch.exe" -Name "RetroArch"
+        }
+    }
+
+    if (-not $raInstalled) {
+        Write-Warning "RetroArch download/extraction completed, but retroarch.exe was not found in $($Paths.RetroArch)"
     }
 }
 
@@ -835,25 +1155,33 @@ if (-not $RetroArchOnly) {
 
         $assetUrl = $null
 
-        # Method 1: Direct URL (for emulators that don't use GitHub releases)
-        if ($emu.ContainsKey('DirectUrl') -and $emu.DirectUrl) {
+        # PCSX2 is handled via a fixed official asset first because GitHub API responses
+        # can prefer nightly/prerelease assets whose naming changes frequently.
+        if ($emu.Name -eq "PCSX2" -and $emu.ContainsKey('DirectUrl') -and $emu.DirectUrl) {
             $assetUrl = $emu.DirectUrl
         }
-        # Method 2: GitHub releases API
-        elseif ($emu.ContainsKey('Repo') -and $emu.Repo) {
+
+        # Method 1: GitHub releases API (preferred when available)
+        if (-not $assetUrl -and $emu.ContainsKey('Repo') -and $emu.Repo) {
             $release = Get-GitHubLatestRelease -Repo $emu.Repo
-            if (-not $release) {
+            if ($release) {
+                $assetUrl = Get-GitHubAssetUrl -Release $release -Pattern $emu.Pattern
+                if (-not $assetUrl) {
+                    $assetUrl = $release.assets |
+                        Where-Object { $_.name -match 'win' -and $_.name -match '(64|x64|x86_64)' -and $_.name -notmatch 'symbols' } |
+                        Select-Object -First 1 |
+                        ForEach-Object { $_.browser_download_url }
+                }
+            }
+            elseif (-not ($emu.ContainsKey('DirectUrl') -and $emu.DirectUrl)) {
                 Write-Err "Could not find release for $($emu.Name) ($($emu.Repo))"
                 continue
             }
+        }
 
-            $assetUrl = Get-GitHubAssetUrl -Release $release -Pattern $emu.Pattern
-            if (-not $assetUrl) {
-                $assetUrl = $release.assets |
-                    Where-Object { $_.name -match 'win' -and $_.name -match '(64|x64|x86_64)' } |
-                    Select-Object -First 1 |
-                    ForEach-Object { $_.browser_download_url }
-            }
+        # Method 2: Direct URL fallback
+        if (-not $assetUrl -and $emu.ContainsKey('DirectUrl') -and $emu.DirectUrl) {
+            $assetUrl = $emu.DirectUrl
         }
 
         if (-not $assetUrl) {
@@ -861,17 +1189,78 @@ if (-not $RetroArchOnly) {
             continue
         }
 
-        $ext = if ($assetUrl -match '\.7z$') { ".7z" } elseif ($assetUrl -match '\.exe$') { ".exe" } else { ".zip" }
+        $ext = if ($emu.ContainsKey('DirectExt') -and $emu.DirectExt) {
+            $emu.DirectExt
+        }
+        elseif ($assetUrl -match '\.7z($|[?#])|\.7z/download$') {
+            ".7z"
+        }
+        elseif ($assetUrl -match '\.exe($|[?#])') {
+            ".exe"
+        }
+        elseif ($assetUrl -match '\.zip($|[?#])|\.zip/download$') {
+            ".zip"
+        }
+        else {
+            ".zip"
+        }
         $dlPath = "$($Paths.Downloads)\$($emu.Folder)$ext"
 
+        if ($emu.ContainsKey('PrimaryExe') -and $emu.PrimaryExe -and (Test-Path (Join-Path $emuInstallDir $emu.PrimaryExe))) {
+            Write-Skip "$($emu.Name) already installed"
+            continue
+        }
+
+        if (Test-Path $dlPath) { Remove-Item $dlPath -Force -ErrorAction SilentlyContinue }
+
         if (Download-File -Url $assetUrl -Destination $dlPath -Description $emu.Name) {
+            if ($emu.ContainsKey('PrimaryExe') -and $emu.PrimaryExe -and -not (Archive-ContainsExpectedExe -ArchivePath $dlPath -ExpectedExe $emu.PrimaryExe)) {
+                if ($emu.Name -eq "PCSX2" -and $emu.ContainsKey('DirectUrl') -and $assetUrl -ne $emu.DirectUrl) {
+                    Write-Warning "Downloaded PCSX2 asset did not contain $($emu.PrimaryExe). Retrying with the fixed stable package."
+                    Remove-Item $dlPath -Force -ErrorAction SilentlyContinue
+                    if (-not (Download-File -Url $emu.DirectUrl -Destination $dlPath -Description "$($emu.Name) stable package")) {
+                        continue
+                    }
+                }
+            }
+
             if ($ext -eq ".exe") {
+                Reset-DirectoryContents $emuInstallDir
                 Copy-Item -Path $dlPath -Destination "$emuInstallDir\$($emu.Folder).exe" -Force
                 Write-OK "Installed $($emu.Name)"
             }
             else {
-                Extract-Archive -Archive $dlPath -Destination $emuInstallDir -Description $emu.Name
-                Flatten-SingleSubfolder $emuInstallDir
+                if ($emu.ContainsKey('PrimaryExe') -and $emu.PrimaryExe) {
+                    $repaired = Ensure-ArchiveProducesExe -ArchivePath $dlPath -InstallDir $emuInstallDir -ExpectedExe $emu.PrimaryExe -Name $emu.Name
+                    if (-not $repaired) {
+                        if ($emu.Name -eq "PCSX2" -and $emu.ContainsKey('DirectUrl') -and $assetUrl -ne $emu.DirectUrl) {
+                            Write-Warning "Retrying PCSX2 using the fixed stable package."
+                            Remove-Item $dlPath -Force -ErrorAction SilentlyContinue
+                            if (Download-File -Url $emu.DirectUrl -Destination $dlPath -Description "PCSX2 stable package") {
+                                $repaired = Ensure-ArchiveProducesExe -ArchivePath $dlPath -InstallDir $emuInstallDir -ExpectedExe $emu.PrimaryExe -Name $emu.Name
+                            }
+                        }
+                        if ($emu.Name -eq "PCSX2") {
+                            Ensure-Dir (Join-Path $emuInstallDir "bios")
+                        }
+                        if (-not $repaired) {
+                            Write-Warning "$($emu.Name) archive did not produce $($emu.PrimaryExe) in $emuInstallDir. The downloaded asset may be wrong or stale."
+                        }
+                    }
+                    elseif ($emu.Name -eq "PCSX2") {
+                        $portableIni = Join-Path $emuInstallDir "portable.ini"
+                        if (-not (Test-Path $portableIni)) {
+                            Set-Content -Path $portableIni -Value "[Portable]" -Encoding ASCII
+                        }
+                        Ensure-Dir (Join-Path $emuInstallDir "bios")
+                    }
+                }
+                else {
+                    Reset-DirectoryContents $emuInstallDir
+                    if (Extract-Archive -Archive $dlPath -Destination $emuInstallDir -Description $emu.Name) {
+                        Flatten-SingleSubfolder $emuInstallDir
+                    }
+                }
             }
         }
     }
@@ -880,6 +1269,10 @@ else {
     Write-Skip "Skipping standalone emulators (-RetroArchOnly)"
     $emuTotal = 0
 }
+
+# -- 7b. Configure ES-DE standalone emulator defaults --------------------------
+Write-Step "Configuring ES-DE emulator defaults..."
+Write-ESDEEmulatorDefaults -BaseDir $BasePath
 
 # -- 8. Generate quick-start guide ---------------------------------------------
 Write-Step "Generating quick-start guide..."
@@ -924,8 +1317,15 @@ $guideText = @"
    3. Enter your credentials and scrape your collection
 
  EMULATOR SELECTION:
-   ES-DE auto-selects the default emulator for each system.
-   To change: highlight a game > press Select > Edit > Alternative Emulator
+   Standalone emulators are pre-configured as system defaults:
+     PS2 -> PCSX2, PS3 -> RPCS3, GameCube/Wii -> Dolphin, etc.
+   Per-game overrides are enabled if you want to use a different emulator
+   for specific games: highlight a game > press Select > Edit > Alternative Emulator
+
+ PS3 GAMES (RPCS3):
+   PS3 games must be installed into RPCS3 first. Place your .pkg files in
+   the ROMs\ps3\ folder OR install them directly via RPCS3 > File > Install .pkg.
+   ES-DE will show installed games from RPCS3's game directory.
 
 ==============================================================================
 "@
@@ -984,8 +1384,9 @@ Write-Host "    1. Run ES-DE.exe (or Launch_ES-DE.bat)" -ForegroundColor White
 Write-Host "    2. Click 'Generate directory structure' to create ROM folders" -ForegroundColor White
 Write-Host "    3. Add BIOS files to Emulators\RetroArch\system\ (see BIOS_README.txt)" -ForegroundColor White
 Write-Host "    4. Add your ROM files to the matching ROMs\ subfolders" -ForegroundColor White
-Write-Host "    5. Note: ES-DE uses its own folder names (e.g. gc, not gamecube)" -ForegroundColor White
-Write-Host "    6. Optionally scrape for artwork at screenscraper.fr" -ForegroundColor White
+Write-Host "    5. Standalone emulators are pre-configured as defaults (PS2, PS3, GC, etc.)" -ForegroundColor White
+Write-Host "    6. Per-game emulator overrides are enabled (Select > Edit > Alternative Emulator)" -ForegroundColor White
+Write-Host "    7. Optionally scrape for artwork at screenscraper.fr" -ForegroundColor White
 Write-Host ""
 Write-Host "  RetroArch cores: $coreTotal" -ForegroundColor Cyan
 if ($emuTotal -gt 0) {
