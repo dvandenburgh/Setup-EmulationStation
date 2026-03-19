@@ -34,7 +34,7 @@
 
 .NOTES
     Author  : Claude (Anthropic) + David
-    Version : 1.4.0
+    Version : 1.5.0
     Date    : 2026-03-17
     License : MIT -- use at your own risk
 #>
@@ -962,6 +962,151 @@ $BIOSGuide = @"
   * For systems not listed, the emulator likely does not require BIOS (HLE mode).
 "@
 
+function Write-ControllerProfiles {
+    param([string]$BaseDir)
+
+    $raDir = Join-Path $BaseDir "Emulators\RetroArch"
+
+    # -------------------------------------------------------------------------
+    # RetroArch base config: set xinput driver for reliable 8BitDo support
+    # -------------------------------------------------------------------------
+    $raCfg = Join-Path $raDir "retroarch.cfg"
+    if (Test-Path $raCfg) {
+        $cfgText = Get-Content -Path $raCfg -Raw -Encoding UTF8
+        if ($cfgText -notmatch 'input_joypad_driver\s*=\s*"xinput"') {
+            $cfgText = $cfgText -replace 'input_joypad_driver\s*=\s*"[^"]*"', 'input_joypad_driver = "xinput"'
+            if ($cfgText -notmatch 'input_joypad_driver') {
+                $cfgText += "`ninput_joypad_driver = `"xinput`"`n"
+            }
+            Set-Content -Path $raCfg -Value $cfgText -Encoding UTF8
+            Write-OK "Set RetroArch joypad driver to xinput"
+        }
+    }
+
+    # -------------------------------------------------------------------------
+    # N64 core options: set C-buttons to right analog stick mode
+    # -------------------------------------------------------------------------
+    # mupen64plus_next defaults to "Right Analog" for C-buttons which maps
+    # perfectly to the 8BitDo 64's C-pad (reports as right stick in XInput).
+    # We ensure this is set explicitly so it survives core option resets.
+    $coreOptsDir = Join-Path $raDir "config\Mupen64Plus-Next"
+    Ensure-Dir $coreOptsDir
+    $coreOptsFile = Join-Path $coreOptsDir "Mupen64Plus-Next.opt"
+
+    if (-not (Test-Path $coreOptsFile)) {
+        $coreOpts = @"
+mupen64plus-astick-deadzone = "15"
+mupen64plus-r-cbuttons = "Right Analog"
+mupen64plus-pak1 = "memory"
+"@
+        Set-Content -Path $coreOptsFile -Value $coreOpts -Encoding ASCII
+        Write-OK "Created N64 core options (C-buttons = Right Analog)"
+    }
+
+    # -------------------------------------------------------------------------
+    # Controller reference guide
+    # -------------------------------------------------------------------------
+    $guideFile = Join-Path $BaseDir "CONTROLLERS.txt"
+    $controllerGuide = @"
+==============================================================================
+ CONTROLLER SETUP GUIDE
+==============================================================================
+
+ This setup is optimized for the following 8BitDo controllers:
+   - 8BitDo Ultimate 2C (Wired / Wireless / Bluetooth)
+   - 8BitDo Pro 2 (Bluetooth)
+   - 8BitDo 64 (Bluetooth -- N64-style controller)
+
+ All three controllers work in XInput mode on Windows, which means they
+ appear as standard Xbox controllers. RetroArch and all standalone emulators
+ recognize them automatically with no additional configuration needed.
+
+==============================================================================
+ RECOMMENDED MODE FOR EACH CONTROLLER
+==============================================================================
+
+ 8BitDo Ultimate 2C:
+   - Use 2.4G mode (USB dongle) or Wired mode for lowest latency
+   - Mode switch should be on "2.4G" or connect via USB-C cable
+   - L4/R4 back buttons can be remapped on the controller itself
+     (hold Mapping button + L4/R4 + desired button)
+   - Works as standard XInput gamepad -- no driver or software needed
+
+ 8BitDo Pro 2:
+   - Set mode switch to "X" (XInput mode) before connecting
+   - Connect via Bluetooth or USB-C cable
+   - Back paddle buttons work in XInput mode
+   - Use 8BitDo Ultimate Software (app.8bitdo.com) to customize profiles
+
+ 8BitDo 64 (N64 controller):
+   - Connect via Bluetooth or USB-C cable to PC
+   - In Windows mode, the controller maps to XInput automatically:
+       N64 A button   -> Xbox A      N64 B button   -> Xbox B
+       N64 C-Up       -> Xbox X      N64 C-Down     -> Xbox Y
+       N64 C-Left     -> Right Stick Left
+       N64 C-Right    -> Right Stick Right
+       N64 Z (left)   -> Xbox LT     N64 Z (right)  -> Xbox RT
+       N64 L          -> Xbox LB     N64 R          -> Xbox RB
+       N64 Start      -> Xbox Start  N64 D-pad      -> Xbox D-pad
+   - The right analog stick on a standard gamepad becomes the C-buttons
+
+==============================================================================
+ RETROARCH BUTTON MAPPING (all XInput controllers)
+==============================================================================
+
+ RetroArch uses a virtual "RetroPad" layout that maps to each system.
+ The XInput driver is pre-configured for reliable 8BitDo support.
+
+ Standard mapping (Xbox -> RetroPad -> most systems):
+   Xbox A   -> RetroPad B  -> SNES B / Genesis B / PS Cross
+   Xbox B   -> RetroPad A  -> SNES A / Genesis C / PS Circle
+   Xbox X   -> RetroPad Y  -> SNES Y / Genesis A / PS Square
+   Xbox Y   -> RetroPad X  -> SNES X / Genesis X / PS Triangle
+   Xbox LB  -> RetroPad L  -> SNES L / PS L1
+   Xbox RB  -> RetroPad R  -> SNES R / PS R1
+   Xbox LT  -> RetroPad L2 -> PS L2
+   Xbox RT  -> RetroPad R2 -> PS R2
+
+ N64 mapping (via mupen64plus_next core):
+   Xbox A   -> N64 A          Xbox B   -> N64 B
+   Right Stick               -> N64 C-buttons (Right Analog mode)
+   Xbox LT  -> N64 Z          Xbox LB  -> N64 L
+   Xbox RB  -> N64 R          Xbox Start -> N64 Start
+
+ The mupen64plus_next core uses "C Buttons: Right Analog" mode by default.
+ This maps the right analog stick to N64 C-buttons -- works perfectly
+ with the 8BitDo 64's C-pad (which reports as right stick in XInput)
+ and with standard Xbox controllers using the right thumbstick.
+
+==============================================================================
+ STANDALONE EMULATORS (PCSX2, RPCS3, Dolphin, etc.)
+==============================================================================
+
+ All standalone emulators use standard XInput, so your 8BitDo controllers
+ work immediately with correct Xbox-style mapping. No configuration needed.
+
+ For GameCube: Dolphin maps Xbox buttons to GameCube buttons 1:1.
+ For Wii: Use Dolphin's controller settings to configure Wii Remote
+ emulation with your gamepad (Classic Controller mode works best).
+
+==============================================================================
+ TIPS
+==============================================================================
+
+ - If a controller is not detected, unplug and replug it, or restart ES-DE.
+ - The 8BitDo 64's physical C-pad buttons work as the right analog stick
+   in XInput mode, which is exactly what N64 emulators expect.
+ - All 8BitDo controllers support firmware updates via support.8bitdo.com
+ - The RetroArch hotkey combo is Select+Start to quit a game by default.
+ - For the best N64 experience, use the 8BitDo 64 + mupen64plus_next core.
+
+==============================================================================
+"@
+
+    Set-Content -Path $guideFile -Value $controllerGuide -Encoding ASCII -Force
+    Write-OK "Controller guide written to CONTROLLERS.txt"
+}
+
 # ==============================================================================
 #  MAIN EXECUTION
 # ==============================================================================
@@ -1331,6 +1476,10 @@ else {
 # -- 7b. Configure ES-DE standalone emulator defaults --------------------------
 Write-Step "Configuring ES-DE emulator defaults..."
 Write-ESDEEmulatorDefaults -BaseDir $BasePath
+
+# -- 7c. Configure controller profiles ----------------------------------------
+Write-Step "Configuring controller profiles..."
+Write-ControllerProfiles -BaseDir $BasePath
 
 # -- 8. Generate quick-start guide ---------------------------------------------
 Write-Step "Generating quick-start guide..."

@@ -58,7 +58,7 @@ The script will now download everything automatically. This may take **20–40 m
 
 When the script finishes, open `C:\EmulationStation` in File Explorer and run **`ES-DE.exe`** (or double-click `Launch_ES-DE.bat`).
 
-All 195 ROM system folders and emulator defaults are already configured — just add your ROMs and BIOS files.
+On first launch, click **"Generate directory structure"** to create all the ROM subfolders.
 
 ---
 
@@ -91,8 +91,10 @@ Everything lands inside a single folder (`C:\EmulationStation` by default) — n
 3. **17 standalone emulators** for systems that need them (PS2, PS3, GameCube, Switch, and more)
 4. **195 ROM system folders** pre-created so ES-DE is ready to use immediately
 5. A pre-built `es_settings.xml` so the right emulator launches automatically per system
-6. `BIOS_README.txt` — a reference file listing every BIOS/firmware file you'll need to source yourself, with MD5 checksums
-7. `QUICK_START.txt` and `Launch_ES-DE.bat` for convenience
+6. **Controller profiles** for 8BitDo Ultimate 2C, Pro 2, and 64 controllers with optimized N64 core options
+7. `BIOS_README.txt` — a reference file listing every BIOS/firmware file you'll need, with MD5 checksums
+8. `CONTROLLERS.txt` — setup guide for recommended 8BitDo controllers
+9. `QUICK_START.txt` and `Launch_ES-DE.bat` for convenience
 
 ---
 
@@ -123,7 +125,7 @@ C:\EmulationStation\
 |-- ES-DE.exe                    <- Launch this
 |-- ES-DE\
 |   \-- es_settings.xml          <- Pre-configured emulator defaults
-|-- ROMs\                        <- 195 system folders pre-created
+|-- ROMs\                        <- ES-DE generates system folders on first launch
 |   |-- gc\, snes\, psx\, ps2\, ps3\, switch\, ...
 |-- Emulators\
 |   |-- RetroArch\
@@ -151,12 +153,13 @@ C:\EmulationStation\
 |   |-- dosbox-staging\          <- MS-DOS
 |   \-- scummvm\                 <- Adventure games
 |-- BIOS_README.txt
+|-- CONTROLLERS.txt              <- 8BitDo controller setup guide
 |-- QUICK_START.txt
 |-- Launch_ES-DE.bat
 \-- .downloads\                  <- Cached archives (safe to delete)
 ```
 
-ES-DE uses its own system folder names (e.g. `gc` not `gamecube`, `n3ds` not `3ds`). All 195 system folders are pre-created by the script — no first-launch setup required.
+ES-DE uses its own system folder names (e.g. `gc` not `gamecube`, `n3ds` not `3ds`). Click **"Generate directory structure"** on first launch to create all 150+ system folders with the correct names.
 
 ---
 
@@ -254,9 +257,10 @@ See `BIOS_README.txt` for the complete list with MD5 checksums.
 ## Post-Install Checklist
 
 1. Run `ES-DE.exe` (or `Launch_ES-DE.bat`)
-2. Add BIOS files where needed (see table above)
-3. Drop ROM files into the matching subfolder inside `ROMs\`
-4. Standalone emulators are already set as defaults — no manual configuration needed
+2. Click **"Generate directory structure"** to create ROM folders
+3. Add BIOS files where needed (see table above)
+4. Drop ROM files into the matching subfolder inside `ROMs\`
+5. Standalone emulators are already set as defaults — no manual configuration needed
 
 ### System-specific notes
 
@@ -270,7 +274,7 @@ See `BIOS_README.txt` for the complete list with MD5 checksums.
 
 ## Supported Systems
 
-ES-DE supports 195 game systems. Key systems by manufacturer:
+ES-DE supports 150+ game systems. Key systems by manufacturer:
 
 **Nintendo** -- NES, SNES, N64, GameCube, Wii, Wii U, Switch, Game Boy, GBC, GBA, DS, 3DS, FDS, Virtual Boy, Pokemon Mini
 
@@ -291,6 +295,45 @@ ES-DE supports 195 game systems. Key systems by manufacturer:
 **Computers** -- MS-DOS, ScummVM, Amiga, C64, MSX, ZX Spectrum, PC-9801, X68000, FM Towns, and many more
 
 **Other** -- 3DO, ColecoVision, Intellivision, Vectrex, WonderSwan, Odyssey 2, Channel F, Arduboy, PICO-8, TIC-80
+
+---
+
+## Controller Support
+
+The script is optimized for three 8BitDo controllers, all of which work in XInput mode on Windows with zero configuration:
+
+| Controller | Best Mode | Use Case |
+|-----------|-----------|----------|
+| **8BitDo Ultimate 2C** | 2.4G dongle or USB-C wired | General-purpose gamepad for all systems |
+| **8BitDo Pro 2** | XInput mode (switch to "X") | General-purpose with back paddles |
+| **8BitDo 64** | Bluetooth or USB-C wired | N64 games — native C-pad layout |
+
+All three appear as standard Xbox controllers in XInput mode, so RetroArch and every standalone emulator recognize them automatically.
+
+### What the script configures
+
+- **RetroArch input driver** set to `xinput` for reliable 8BitDo detection
+- **N64 core options** for mupen64plus_next: C-buttons mapped to right analog stick, which matches the 8BitDo 64's C-pad (it reports as right stick in XInput mode) and works with any standard gamepad's right thumbstick
+- **`CONTROLLERS.txt`** reference guide with full button mapping tables for all three controllers, including the Xbox-to-RetroPad-to-N64 translation chain
+
+### 8BitDo 64 — N64 button mapping
+
+The 8BitDo 64's unique N64-style layout maps naturally to the mupen64plus_next core:
+
+| 8BitDo 64 Button | XInput | N64 Function |
+|-----------------|--------|-------------|
+| A (big button) | Xbox A | N64 A |
+| B | Xbox B | N64 B |
+| C-Up | Xbox X | C-Up (via right stick) |
+| C-Down | Xbox Y | C-Down (via right stick) |
+| C-Left | R Stick Left | C-Left |
+| C-Right | R Stick Right | C-Right |
+| Z (left trigger) | Xbox LT | N64 Z |
+| L | Xbox LB | N64 L |
+| R | Xbox RB | N64 R |
+| Start | Xbox Start | N64 Start |
+
+See `CONTROLLERS.txt` in the install directory for the complete guide.
 
 ---
 
