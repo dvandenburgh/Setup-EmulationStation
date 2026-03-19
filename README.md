@@ -91,7 +91,7 @@ Everything lands inside a single folder (`C:\EmulationStation` by default) — n
 3. **17 standalone emulators** for systems that need them (PS2, PS3, GameCube, Switch, and more)
 4. **195 ROM system folders** pre-created so ES-DE is ready to use immediately
 5. A pre-built `es_settings.xml` so the right emulator launches automatically per system
-6. **Controller profiles** for 8BitDo Ultimate 2C, Pro 2, and 64 controllers with optimized N64 core options
+6. **Controller profiles** for 8BitDo Ultimate 2C, Pro 2, and 64 (XInput) plus a **Retro-Bit Tribute64** RetroArch autoconfig (dinput) with discrete C-button mapping and optimized N64 core options
 7. `BIOS_README.txt` — a reference file listing every BIOS/firmware file you'll need, with MD5 checksums
 8. `CONTROLLERS.txt` — setup guide for recommended 8BitDo controllers
 9. `QUICK_START.txt` and `Launch_ES-DE.bat` for convenience
@@ -300,21 +300,23 @@ ES-DE supports 150+ game systems. Key systems by manufacturer:
 
 ## Controller Support
 
-The script is optimized for three 8BitDo controllers, all of which work in XInput mode on Windows with zero configuration:
+The script is optimized for four controllers covering XInput and authentic N64 layouts:
 
-| Controller | Best Mode | Use Case |
+| Controller | Connection | Use Case |
 |-----------|-----------|----------|
 | **8BitDo Ultimate 2C** | 2.4G dongle or USB-C wired | General-purpose gamepad for all systems |
 | **8BitDo Pro 2** | XInput mode (switch to "X") | General-purpose with back paddles |
-| **8BitDo 64** | Bluetooth or USB-C wired | N64 games — native C-pad layout |
+| **8BitDo 64** | Bluetooth or USB-C wired | N64 games — native C-pad layout via XInput |
+| **Retro-Bit Tribute64** | USB | N64 games — discrete C-buttons, most authentic feel |
 
-All three appear as standard Xbox controllers in XInput mode, so RetroArch and every standalone emulator recognize them automatically.
+The 8BitDo controllers work in XInput mode on Windows, appearing as standard Xbox controllers to RetroArch and every standalone emulator. The Retro-Bit Tribute64 connects as a DirectInput (dinput) HID device and uses a pre-installed RetroArch autoconfig.
 
 ### What the script configures
 
 - **RetroArch input driver** set to `xinput` for reliable 8BitDo detection
-- **N64 core options** for mupen64plus_next: C-buttons mapped to right analog stick, which matches the 8BitDo 64's C-pad (it reports as right stick in XInput mode) and works with any standard gamepad's right thumbstick
-- **`CONTROLLERS.txt`** reference guide with full button mapping tables for all three controllers, including the Xbox-to-RetroPad-to-N64 translation chain
+- **N64 core options** for mupen64plus_next: C-buttons mapped to right analog stick (matches the 8BitDo 64's C-pad and any standard gamepad's right thumbstick)
+- **Retro-Bit Tribute64 autoconfig** written to `Emulators\RetroArch\autoconfig\Retro-Bit Tribute64.cfg` — maps all 14 N64 inputs including discrete C-button digital inputs, no right-analog mode required
+- **`CONTROLLERS.txt`** reference guide with full button mapping tables for all four controllers, including the Xbox-to-RetroPad-to-N64 translation chain
 
 ### 8BitDo 64 — N64 button mapping
 
@@ -332,6 +334,25 @@ The 8BitDo 64's unique N64-style layout maps naturally to the mupen64plus_next c
 | L | Xbox LB | N64 L |
 | R | Xbox RB | N64 R |
 | Start | Xbox Start | N64 Start |
+
+### Retro-Bit Tribute64 — N64 button mapping
+
+The Tribute64 uses discrete digital C-buttons (not an analog stick), so it connects as a DirectInput device with a dedicated RetroArch autoconfig pre-installed at `Emulators\RetroArch\autoconfig\Retro-Bit Tribute64.cfg`:
+
+| Tribute64 Button | Input | N64 Function |
+|-----------------|-------|-------------|
+| A | Button 0 | N64 A |
+| B | Button 1 | N64 B |
+| C-Up | Button 10 | C-Up |
+| C-Down | Button 11 | C-Down |
+| C-Left | Button 12 | C-Left |
+| C-Right | Button 13 | C-Right |
+| Z | Button 6 | N64 Z |
+| L | Button 4 | N64 L |
+| R | Button 5 | N64 R |
+| Start | Button 9 | N64 Start |
+
+No right-analog-stick core option needed — C-buttons are recognized as discrete digital inputs by mupen64plus_next and ParaLLEl-N64 automatically.
 
 See `CONTROLLERS.txt` in the install directory for the complete guide.
 

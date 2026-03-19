@@ -34,8 +34,8 @@
 
 .NOTES
     Author  : Claude (Anthropic) + David
-    Version : 1.5.0
-    Date    : 2026-03-17
+    Version : 1.6.0
+    Date    : 2026-03-18
     License : MIT -- use at your own risk
 #>
 
@@ -987,8 +987,10 @@ function Write-ControllerProfiles {
     # N64 core options: set C-buttons to right analog stick mode
     # -------------------------------------------------------------------------
     # mupen64plus_next defaults to "Right Analog" for C-buttons which maps
-    # perfectly to the 8BitDo 64's C-pad (reports as right stick in XInput).
-    # We ensure this is set explicitly so it survives core option resets.
+    # perfectly to the 8BitDo 64's C-pad (reports as right stick in XInput)
+    # and with any standard gamepad's right thumbstick.
+    # The Retro-Bit Tribute64 uses discrete C-button inputs (no right stick),
+    # so it is handled via a per-game/per-core remap instead (see below).
     $coreOptsDir = Join-Path $raDir "config\Mupen64Plus-Next"
     Ensure-Dir $coreOptsDir
     $coreOptsFile = Join-Path $coreOptsDir "Mupen64Plus-Next.opt"
@@ -1004,6 +1006,58 @@ mupen64plus-pak1 = "memory"
     }
 
     # -------------------------------------------------------------------------
+    # Retro-Bit Tribute64 USB controller autoconfig
+    # -------------------------------------------------------------------------
+    # The Tribute64 presents as a DirectInput HID device (not XInput).
+    # RetroArch autoconfig maps its physical layout directly to RetroPad.
+    # C-buttons are discrete digital inputs mapped to the right face buttons
+    # and right stick hat so they appear on RetroArch's standard C-button
+    # inputs without needing right-analog-stick mode.
+    $autoconfigDir = Join-Path $raDir "autoconfig"
+    Ensure-Dir $autoconfigDir
+    $tribute64Config = Join-Path $autoconfigDir "Retro-Bit Tribute64.cfg"
+
+    if (-not (Test-Path $tribute64Config)) {
+        $tribute64Cfg = @"
+input_driver = "dinput"
+input_device = "Retro-Bit Tribute64"
+input_vendor_id = "12068"
+input_product_id = "7"
+
+input_b_btn = "1"
+input_a_btn = "0"
+input_y_btn = "3"
+input_x_btn = "2"
+input_start_btn = "9"
+input_select_btn = "8"
+input_l_btn = "4"
+input_r_btn = "5"
+input_l2_btn = "6"
+input_r2_btn = "7"
+
+input_up_axis = "-1"
+input_down_axis = "+1"
+input_left_axis = "-0"
+input_right_axis = "+0"
+
+input_l_x_plus_axis = "+2"
+input_l_x_minus_axis = "-2"
+input_l_y_plus_axis = "+3"
+input_l_y_minus_axis = "-3"
+
+input_r_x_plus_btn = "13"
+input_r_x_minus_btn = "12"
+input_r_y_plus_btn = "11"
+input_r_y_minus_btn = "10"
+"@
+        Set-Content -Path $tribute64Config -Value $tribute64Cfg -Encoding ASCII
+        Write-OK "Created Retro-Bit Tribute64 RetroArch autoconfig"
+    }
+    else {
+        Write-Skip "Retro-Bit Tribute64 autoconfig already exists"
+    }
+
+    # -------------------------------------------------------------------------
     # Controller reference guide
     # -------------------------------------------------------------------------
     $guideFile = Join-Path $BaseDir "CONTROLLERS.txt"
@@ -1012,14 +1066,15 @@ mupen64plus-pak1 = "memory"
  CONTROLLER SETUP GUIDE
 ==============================================================================
 
- This setup is optimized for the following 8BitDo controllers:
+ This setup is optimized for the following controllers:
    - 8BitDo Ultimate 2C (Wired / Wireless / Bluetooth)
    - 8BitDo Pro 2 (Bluetooth)
    - 8BitDo 64 (Bluetooth -- N64-style controller)
+   - Retro-Bit Tribute64 (USB -- authentic N64-style with discrete C-buttons)
 
- All three controllers work in XInput mode on Windows, which means they
- appear as standard Xbox controllers. RetroArch and all standalone emulators
- recognize them automatically with no additional configuration needed.
+ The 8BitDo controllers work in XInput mode on Windows, appearing as standard
+ Xbox controllers. The Retro-Bit Tribute64 connects as a DirectInput HID
+ device -- an autoconfig is pre-installed so RetroArch maps it automatically.
 
 ==============================================================================
  RECOMMENDED MODE FOR EACH CONTROLLER
@@ -1050,6 +1105,21 @@ mupen64plus-pak1 = "memory"
        N64 Start      -> Xbox Start  N64 D-pad      -> Xbox D-pad
    - The right analog stick on a standard gamepad becomes the C-buttons
 
+ Retro-Bit Tribute64 (USB):
+   - Plug directly into USB -- no drivers, no mode switching required
+   - Appears as a DirectInput (dinput) HID device in Windows
+   - RetroArch autoconfig is pre-installed in:
+       Emulators\RetroArch\autoconfig\Retro-Bit Tribute64.cfg
+   - C-buttons are discrete digital inputs wired to right face/hat positions
+   - Physical layout maps 1:1 to N64 functions with no remapping needed:
+       N64 A          -> Button 0     N64 B          -> Button 1
+       N64 C-Up       -> Button 10    N64 C-Down     -> Button 11
+       N64 C-Left     -> Button 12    N64 C-Right    -> Button 13
+       N64 Z          -> Button 6     N64 L          -> Button 4
+       N64 R          -> Button 5     N64 Start      -> Button 9
+   - No "Right Analog" mode needed -- C-buttons work as discrete digital
+     inputs in mupen64plus_next automatically via the autoconfig
+
 ==============================================================================
  RETROARCH BUTTON MAPPING (all XInput controllers)
 ==============================================================================
@@ -1078,12 +1148,21 @@ mupen64plus-pak1 = "memory"
  with the 8BitDo 64's C-pad (which reports as right stick in XInput)
  and with standard Xbox controllers using the right thumbstick.
 
+ Retro-Bit Tribute64 N64 mapping:
+   The Tribute64 autoconfig maps C-buttons as discrete digital button inputs
+   (not right-stick). mupen64plus_next and ParaLLEl-N64 both detect these
+   as standard C-button presses with no special core option required.
+
 ==============================================================================
  STANDALONE EMULATORS (PCSX2, RPCS3, Dolphin, etc.)
 ==============================================================================
 
  All standalone emulators use standard XInput, so your 8BitDo controllers
  work immediately with correct Xbox-style mapping. No configuration needed.
+
+ The Retro-Bit Tribute64 may not be recognized by standalone emulators
+ out of the box since it is a DirectInput device. For non-N64 games,
+ use one of the 8BitDo XInput controllers instead.
 
  For GameCube: Dolphin maps Xbox buttons to GameCube buttons 1:1.
  For Wii: Use Dolphin's controller settings to configure Wii Remote
@@ -1096,9 +1175,13 @@ mupen64plus-pak1 = "memory"
  - If a controller is not detected, unplug and replug it, or restart ES-DE.
  - The 8BitDo 64's physical C-pad buttons work as the right analog stick
    in XInput mode, which is exactly what N64 emulators expect.
+ - The Retro-Bit Tribute64 gives the most authentic N64 feel with its
+   genuine C-button layout -- best paired with mupen64plus_next or ParaLLEl-N64.
  - All 8BitDo controllers support firmware updates via support.8bitdo.com
  - The RetroArch hotkey combo is Select+Start to quit a game by default.
- - For the best N64 experience, use the 8BitDo 64 + mupen64plus_next core.
+ - For the best N64 experience, use either:
+     8BitDo 64        -- for wireless Bluetooth + modern comfort
+     Retro-Bit Tribute64 -- for authentic N64 feel + discrete C-buttons
 
 ==============================================================================
 "@
