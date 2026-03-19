@@ -1015,40 +1015,63 @@ mupen64plus-pak1 = "memory"
     # inputs without needing right-analog-stick mode.
     $autoconfigDir = Join-Path $raDir "autoconfig"
     Ensure-Dir $autoconfigDir
-    $tribute64Config = Join-Path $autoconfigDir "Retro-Bit Tribute64.cfg"
+    $tribute64Config = Join-Path $autoconfigDir "Retro-Bit Tribute64 - USB (D-Input).cfg"
 
     if (-not (Test-Path $tribute64Config)) {
+        # Mapping sourced from official libretro autoconfig:
+        # https://github.com/libretro/retroarch-joypad-autoconfig/blob/master/dinput/Retro-Bit%20Tribute64%20-%20USB%20(D-Input).cfg
         $tribute64Cfg = @"
+# Retro-Bit Tribute64 - USB (D-Input)
+# Tested with Mupen64Plus-Next
+# Additional input_a_btn map added for RetroArch menu navigation
 input_driver = "dinput"
-input_device = "Retro-Bit Tribute64"
-input_vendor_id = "12068"
-input_product_id = "7"
+input_device = "Controller (Dinput)"
+input_device_display_name = "Retro-Bit Tribute64 - USB (D-Input)"
+input_vendor_id = "9571"
+input_product_id = "1397"
 
 input_b_btn = "1"
-input_a_btn = "0"
-input_y_btn = "3"
-input_x_btn = "2"
-input_start_btn = "9"
-input_select_btn = "8"
+input_a_btn = "2"
+input_y_btn = "2"
+input_start_btn = "12"
+input_up_btn = "h0up"
+input_down_btn = "h0down"
+input_left_btn = "h0left"
+input_right_btn = "h0right"
 input_l_btn = "4"
 input_r_btn = "5"
 input_l2_btn = "6"
 input_r2_btn = "7"
 
-input_up_axis = "-1"
-input_down_axis = "+1"
-input_left_axis = "-0"
-input_right_axis = "+0"
+input_l_x_plus_axis = "+0"
+input_l_x_minus_axis = "-0"
+input_l_y_plus_axis = "+1"
+input_l_y_minus_axis = "-1"
 
-input_l_x_plus_axis = "+2"
-input_l_x_minus_axis = "-2"
-input_l_y_plus_axis = "+3"
-input_l_y_minus_axis = "-3"
+input_r_x_plus_btn = "9"
+input_r_x_minus_btn = "3"
+input_r_y_plus_btn = "0"
+input_r_y_minus_btn = "8"
 
-input_r_x_plus_btn = "13"
-input_r_x_minus_btn = "12"
-input_r_y_plus_btn = "11"
-input_r_y_minus_btn = "10"
+input_b_btn_label = "A"
+input_y_btn_label = "B"
+input_start_btn_label = "Start"
+input_up_btn_label = "D-Pad Up"
+input_down_btn_label = "D-Pad Down"
+input_left_btn_label = "D-Pad Left"
+input_right_btn_label = "D-Pad Right"
+input_l_btn_label = "L"
+input_r_btn_label = "R"
+input_l2_btn_label = "Z"
+input_r2_btn_label = "ZR"
+input_l_x_plus_axis_label = "Joystick Right"
+input_l_x_minus_axis_label = "Joystick Left"
+input_l_y_plus_axis_label = "Joystick Down"
+input_l_y_minus_axis_label = "Joystick Up"
+input_r_x_plus_btn_label = "C Right"
+input_r_x_minus_btn_label = "C Left"
+input_r_y_plus_btn_label = "C Up"
+input_r_y_minus_btn_label = "C Down"
 "@
         Set-Content -Path $tribute64Config -Value $tribute64Cfg -Encoding ASCII
         Write-OK "Created Retro-Bit Tribute64 RetroArch autoconfig"
@@ -1097,26 +1120,30 @@ input_r_y_minus_btn = "10"
    - Connect via Bluetooth or USB-C cable to PC
    - In Windows mode, the controller maps to XInput automatically:
        N64 A button   -> Xbox A      N64 B button   -> Xbox B
-       N64 C-Up       -> Xbox X      N64 C-Down     -> Xbox Y
+       N64 C-Up       -> Right Stick Up
+       N64 C-Down     -> Right Stick Down
        N64 C-Left     -> Right Stick Left
        N64 C-Right    -> Right Stick Right
        N64 Z (left)   -> Xbox LT     N64 Z (right)  -> Xbox RT
        N64 L          -> Xbox LB     N64 R          -> Xbox RB
        N64 Start      -> Xbox Start  N64 D-pad      -> Xbox D-pad
-   - The right analog stick on a standard gamepad becomes the C-buttons
+   - The C-pad reports as the right analog stick in XInput mode
+   - The mupen64plus_next core's "Right Analog" C-button mode maps this
+     directly to N64 C-buttons with no additional configuration
 
  Retro-Bit Tribute64 (USB):
    - Plug directly into USB -- no drivers, no mode switching required
    - Appears as a DirectInput (dinput) HID device in Windows
    - RetroArch autoconfig is pre-installed in:
-       Emulators\RetroArch\autoconfig\Retro-Bit Tribute64.cfg
-   - C-buttons are discrete digital inputs wired to right face/hat positions
+       Emulators\RetroArch\autoconfig\Retro-Bit Tribute64 - USB (D-Input).cfg
+   - C-buttons are discrete digital inputs mapped to right stick hat
    - Physical layout maps 1:1 to N64 functions with no remapping needed:
-       N64 A          -> Button 0     N64 B          -> Button 1
-       N64 C-Up       -> Button 10    N64 C-Down     -> Button 11
-       N64 C-Left     -> Button 12    N64 C-Right    -> Button 13
+       N64 A          -> Button 1     N64 B          -> Button 2
+       N64 C-Up       -> Button 0     N64 C-Down     -> Button 8
+       N64 C-Left     -> Button 3     N64 C-Right    -> Button 9
        N64 Z          -> Button 6     N64 L          -> Button 4
-       N64 R          -> Button 5     N64 Start      -> Button 9
+       N64 R          -> Button 5     N64 Start      -> Button 12
+       D-pad          -> Hat 0        Analog Stick   -> Axes 0/1
    - No "Right Analog" mode needed -- C-buttons work as discrete digital
      inputs in mupen64plus_next automatically via the autoconfig
 

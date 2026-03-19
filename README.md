@@ -315,7 +315,7 @@ The 8BitDo controllers work in XInput mode on Windows, appearing as standard Xbo
 
 - **RetroArch input driver** set to `xinput` for reliable 8BitDo detection
 - **N64 core options** for mupen64plus_next: C-buttons mapped to right analog stick (matches the 8BitDo 64's C-pad and any standard gamepad's right thumbstick)
-- **Retro-Bit Tribute64 autoconfig** written to `Emulators\RetroArch\autoconfig\Retro-Bit Tribute64.cfg` — maps all 14 N64 inputs including discrete C-button digital inputs, no right-analog mode required
+- **Retro-Bit Tribute64 autoconfig** written to `Emulators\RetroArch\autoconfig\Retro-Bit Tribute64 - USB (D-Input).cfg` — maps all 14 N64 inputs including discrete C-button digital inputs, no right-analog mode required
 - **`CONTROLLERS.txt`** reference guide with full button mapping tables for all four controllers, including the Xbox-to-RetroPad-to-N64 translation chain
 
 ### 8BitDo 64 — N64 button mapping
@@ -326,8 +326,8 @@ The 8BitDo 64's unique N64-style layout maps naturally to the mupen64plus_next c
 |-----------------|--------|-------------|
 | A (big button) | Xbox A | N64 A |
 | B | Xbox B | N64 B |
-| C-Up | Xbox X | C-Up (via right stick) |
-| C-Down | Xbox Y | C-Down (via right stick) |
+| C-Up | R Stick Up | C-Up |
+| C-Down | R Stick Down | C-Down |
 | C-Left | R Stick Left | C-Left |
 | C-Right | R Stick Right | C-Right |
 | Z (left trigger) | Xbox LT | N64 Z |
@@ -337,20 +337,20 @@ The 8BitDo 64's unique N64-style layout maps naturally to the mupen64plus_next c
 
 ### Retro-Bit Tribute64 — N64 button mapping
 
-The Tribute64 uses discrete digital C-buttons (not an analog stick), so it connects as a DirectInput device with a dedicated RetroArch autoconfig pre-installed at `Emulators\RetroArch\autoconfig\Retro-Bit Tribute64.cfg`:
+The Tribute64 uses discrete digital C-buttons (not an analog stick), so it connects as a DirectInput device with a dedicated RetroArch autoconfig pre-installed at `Emulators\RetroArch\autoconfig\Retro-Bit Tribute64 - USB (D-Input).cfg`:
 
 | Tribute64 Button | Input | N64 Function |
 |-----------------|-------|-------------|
-| A | Button 0 | N64 A |
-| B | Button 1 | N64 B |
-| C-Up | Button 10 | C-Up |
-| C-Down | Button 11 | C-Down |
-| C-Left | Button 12 | C-Left |
-| C-Right | Button 13 | C-Right |
+| A | Button 1 (RetroPad B) | N64 A |
+| B | Button 2 (RetroPad Y) | N64 B |
+| C-Up | Button 0 | C-Up |
+| C-Down | Button 8 | C-Down |
+| C-Left | Button 3 | C-Left |
+| C-Right | Button 9 | C-Right |
 | Z | Button 6 | N64 Z |
 | L | Button 4 | N64 L |
 | R | Button 5 | N64 R |
-| Start | Button 9 | N64 Start |
+| Start | Button 12 | N64 Start |
 
 No right-analog-stick core option needed — C-buttons are recognized as discrete digital inputs by mupen64plus_next and ParaLLEl-N64 automatically.
 
